@@ -1,0 +1,6 @@
+/* index.css  ─ добавьте в самый низ */
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
