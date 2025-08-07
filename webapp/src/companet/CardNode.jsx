@@ -23,7 +23,7 @@ export default function CardNode({ id, data }) {
       />
 
       {/* удалить */}
-      <button className="close" onClick={() => onDelete(id)}>×</button>
+     <button className="close" onClick={() => onDelete?.(id)}>×</button>
 
       {/* коннекторы */}
       <Handle type="target" position={Position.Top} />

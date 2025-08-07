@@ -10,82 +10,98 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 
 import { loadFlow, saveFlow } from '../service/storage';
-import CardNode from '../companet/CardNode';
+import CardNode  from '../companet/CardNode';
 import Toolbar   from '../companet/Toolbar';
 
 export default function FlowPage() {
-  /* начальное состояние из localStorage */
-  const initial               = useMemo(() => loadFlow(), []);
-  const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges);
-
-  /* фикс ворнинга #002 ― мемоизируем nodeTypes */
+  /* ─ helpers ─ */
   const nodeTypes = useMemo(() => ({ card: CardNode }), []);
 
-  /* ────────── callbacks ────────── */
+  /* ─ state ─ */
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  /* добавить карточку */
-  const addNode = useCallback(() => {
-    setNodes(nds => [
-      ...nds,
-      {
-        id: crypto.randomUUID(),
-        type: 'card',
-        position: { x: 100, y: 100 },
-        data: {
-          label: 'Новая карточка',
-          color: '#FFD700',
-          onTitle:  (id, t) => setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, label:t }} : n)),
-          onColor:  (id, c) => setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, color:c }} : n)),
-          onDelete: deleteNode,
+  /* ─ factory: прикручивает onColor / onTitle / onDelete ─ */
+  const makeNode = useCallback(
+    raw => ({
+      ...raw,
+      data: {
+        ...raw.data,
+        onTitle: (id, t) =>
+          setNodes(ns =>
+            ns.map(n => (n.id === id ? { ...n, data: { ...n.data, label: t } } : n)),
+          ),
+        onColor: (id, c) =>
+          setNodes(ns =>
+            ns.map(n => (n.id === id ? { ...n, data: { ...n.data, color: c } } : n)),
+          ),
+        onDelete: id => {
+          setNodes(ns => ns.filter(n => n.id !== id));
+          setEdges(es => es.filter(e => e.source !== id && e.target !== id));
         },
       },
-    ]);
-  }, [setNodes, deleteNode]);
-
-
-
-
-
-
-
- const deleteNode = useCallback(
-    id => {
-      setNodes(ns => ns.filter(n => n.id !== id));
-      setEdges(es => es.filter(e => e.source !== id && e.target !== id));
-    },
+    }),
     [setNodes, setEdges],
   );
 
+  /* ─ загрузка сохранённого графа один раз ─ */
+  useEffect(() => {
+    const { nodes: savedNodes, edges: savedEdges } = loadFlow();
+    setNodes(savedNodes.map(makeNode));
+    setEdges(savedEdges);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // выполняем только при первом рендере
 
+  /* ─ добавление новой карточки ─ */
+  const addNode = useCallback(() => {
+    const raw = {
+      id: crypto.randomUUID(),
+      type: 'card',
+      position: { x: 100, y: 100 },
+      data: {
+        label: 'Новая карточка',
+        color: '#FFD700',
+      },
+    };
+    setNodes(ns => [...ns, makeNode(raw)]);
+  }, [makeNode, setNodes]);
 
-
-
-
-  /* соединить два узла линией */
+  /* ─ соединение ─ */
   const onConnect = useCallback(
-    params => setEdges(eds => addEdge(params, eds)),
+    params => setEdges(es => addEdge(params, es)),
     [setEdges],
   );
 
-  /* удаляем связи, если удалили узел */
+  /* ─ удаление клавишами Delete/Backspace ─ */
   const onNodesDelete = useCallback(
     deleted =>
-      setEdges(eds =>
-        eds.filter(e => !deleted.some(d => d.id === e.source || d.id === e.target))
+      setEdges(es =>
+        es.filter(e => !deleted.some(d => e.source === d.id || e.target === d.id)),
       ),
     [setEdges],
   );
 
-  /* автосохраняем в localStorage */
-  useEffect(() => saveFlow({ nodes, edges }), [nodes, edges]);
+  /* ─ автосохранение, но без функций ─ */
+  useEffect(() => {
+    const plainNodes = nodes.map(({ data, ...n }) => ({
+      ...n,
+      data: { label: data.label, color: data.color },
+    }));
+    saveFlow({ nodes: plainNodes, edges });
+  }, [nodes, edges]);
 
-  /* ────────── UI ────────── */
+  /* ─ очистка графа кнопкой 🗑 ─ */
+  const resetFlow = () => {
+    localStorage.removeItem('rf-demo');
+    setNodes([]);
+    setEdges([]);
+  };
+
+  /* ─ UI ─ */
   return (
     <>
-      <Toolbar onAdd={addNode} />
+      <Toolbar onAdd={addNode} onReset={resetFlow} />
 
-      {/* родитель с явной шириной/высотой ⇣⇣⇣ */}
       <div style={{ width: '100%', height: '100vh' }}>
         <ReactFlow
           nodes={nodes}
@@ -94,10 +110,11 @@ export default function FlowPage() {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onNodesDelete={onNodesDelete}
+          deleteKeyCode={['Delete', 'Backspace']}
           nodeTypes={nodeTypes}
           fitView
         >
-          <Controls />                      {/* панель зума/центрирования */}
+          <Controls />
           <MiniMap nodeColor={n => n.data.color} />
           <Background />
         </ReactFlow>
