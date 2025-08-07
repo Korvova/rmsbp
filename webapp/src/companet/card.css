@@ -1,6 +1,6 @@
 /* src/companet/card.css */
 .card {
-     position: relative;
+  position: relative;
   min-width: 140px;
   padding: 8px 12px;
   border-radius: 8px;
@@ -10,8 +10,15 @@
   cursor: grab;
    display: flex;
   flex-direction: column;
+
   justify-content: center;   /* вертикально центр */
 }
+
+
+
+
+ 
+
 
 
 .react-flow__handle {

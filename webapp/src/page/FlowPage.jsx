@@ -68,9 +68,27 @@ const defaultEdgeOptions = {
             ns.map(n => (n.id === id ? { ...n, data: { ...n.data, label: t } } : n)),
           ),
         onColor: (id, c) =>
+
+
+
+
           setNodes(ns =>
             ns.map(n => (n.id === id ? { ...n, data: { ...n.data, color: c } } : n)),
           ),
+
+
+
+
+
+     onToggle: (id, val) =>
+       setNodes(ns =>
+         ns.map(n => (n.id === id ? { ...n, data: { ...n.data, done: val } } : n)),
+       ),
+
+
+
+
+
         onDelete: id => {
           setNodes(ns => ns.filter(n => n.id !== id));
           setEdges(es => es.filter(e => e.source !== id && e.target !== id));
@@ -97,6 +115,7 @@ const defaultEdgeOptions = {
       data: {
         label: 'Новая карточка',
         color: '#FFD700',
+         done: false,
       },
     };
     setNodes(ns => [...ns, makeNode(raw)]);
@@ -121,7 +140,7 @@ const defaultEdgeOptions = {
   useEffect(() => {
     const plainNodes = nodes.map(({ data, ...n }) => ({
       ...n,
-      data: { label: data.label, color: data.color },
+      data: { label: data.label, color: data.color, done: data.done },
     }));
     saveFlow({ nodes: plainNodes, edges });
   }, [nodes, edges]);
