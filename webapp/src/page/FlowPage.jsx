@@ -21,6 +21,42 @@ export default function FlowPage() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
+
+
+
+
+const defaultEdgeOptions = {
+  type: 'default',
+  animated: true,
+  style: {
+    stroke: '#007BFF',
+    strokeWidth: 2,
+    strokeDasharray: '6 4',
+  },
+  label: '📅',              // ← календарь-эмодзи
+  labelStyle: {
+    fill: '#007BFF',
+    fontWeight: 600,
+  },
+  labelBgStyle: {           // фон под текстом (необязательно)
+    fill: 'white',
+    fillOpacity: 0.8,
+  },
+  labelBgPadding: [4, 2],
+  labelBgBorderRadius: 4,
+};
+
+
+
+
+
+
+
+
+
+
+
+
   /* ─ factory: прикручивает onColor / onTitle / onDelete ─ */
   const makeNode = useCallback(
     raw => ({
@@ -104,6 +140,9 @@ export default function FlowPage() {
 
       <div style={{ width: '100%', height: '100vh' }}>
         <ReactFlow
+
+
+          defaultEdgeOptions={defaultEdgeOptions}
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}

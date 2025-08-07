@@ -1,6 +1,5 @@
 import { Handle, Position } from 'reactflow';
-import './card.css';           //-— стили остаются
-                                //   (кнопку "×" добавим ниже)
+import './card.css';
 
 export default function CardNode({ id, data }) {
   const { label, color, onTitle, onColor, onDelete } = data;
@@ -11,23 +10,23 @@ export default function CardNode({ id, data }) {
       <input
         className="title"
         value={label}
-        onChange={e => onTitle(id, e.target.value)}
+        onChange={e => onTitle?.(id, e.target.value)}
       />
 
       {/* выбор цвета */}
       <input
         type="color"
         value={color}
-        onChange={e => onColor(id, e.target.value)}
-        title="Цвет карточки"
+        onChange={e => onColor?.(id, e.target.value)}
+        title="Цвет"
       />
 
       {/* удалить */}
-     <button className="close" onClick={() => onDelete?.(id)}>×</button>
+      <button className="close" onClick={() => onDelete?.(id)}>×</button>
 
-      {/* коннекторы */}
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Bottom} />
+      {/* коннекторы: слева и справа */}
+      <Handle type="target" position={Position.Left}  />
+      <Handle type="source" position={Position.Right} />
     </div>
   );
 }

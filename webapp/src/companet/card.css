@@ -5,9 +5,18 @@
   padding: 8px 12px;
   border-radius: 8px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  background: var(--card-bg, #ffd700); /* дефолтный цвет */
+  background: var(--card-bg, #dcddd2); /* дефолтный цвет */
   font-size: 14px;
   cursor: grab;
+   display: flex;
+  flex-direction: column;
+  justify-content: center;   /* вертикально центр */
+}
+
+
+.react-flow__handle {
+  transform: translateY(-50%);
+  top: 50%;
 }
 
 .card input.title {
