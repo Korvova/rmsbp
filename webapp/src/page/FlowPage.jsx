@@ -12,6 +12,7 @@ import 'reactflow/dist/style.css';
 import { loadFlow, saveFlow } from '../service/storage';
 import CardNode  from '../companet/CardNode';
 import Toolbar   from '../companet/Toolbar';
+import { MarkerType } from 'reactflow';
 
 export default function FlowPage() {
   /* ─ helpers ─ */
@@ -38,6 +39,17 @@ const defaultEdgeOptions = {
     fill: '#007BFF',
     fontWeight: 600,
   },
+
+ /* <<< стрелка */
+  markerEnd: {
+    type: MarkerType.ArrowClosed,   // Arrow, ArrowClosed, ArrowClosedAlt …
+    width: 20,                      // размер
+    height: 20,
+    color: '#007BFF',               // цвет наконечника
+  },
+
+
+
   labelBgStyle: {           // фон под текстом (необязательно)
     fill: 'white',
     fillOpacity: 0.8,
