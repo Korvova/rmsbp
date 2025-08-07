@@ -9,8 +9,12 @@ import {
   MarkerType,
   useNodesState,
   useEdgesState,
+  
 } from 'reactflow';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+
+
+
 import 'reactflow/dist/style.css';
 
 import { loadFlow, saveFlow } from '../service/storage';
@@ -83,14 +87,14 @@ const wrapperRef = useRef(null);
       id: crypto.randomUUID(),
       type: 'card',
       position: { x: 100, y: 100 },
-      data: { label: 'Новая карточка', color: '#FFD700', done: false },
+      data: { label: 'Новая карточка', color: '#fcf9e9ff', done: false },
     };
     setNodes(ns => [...ns, makeNode(raw)]);
   }, [makeNode, setNodes]);
 
   /* базовый стиль рёбер */
   const edgeStyle = {
-    type: 'straight',
+    type: 'defould',
     animated: true,
     style: { stroke: '#007BFF', strokeWidth: 2, strokeDasharray: '6 4' },
     markerEnd: { type: MarkerType.ArrowClosed, color: '#007BFF' },
@@ -139,7 +143,7 @@ const wrapperRef = useRef(null);
         id: newId,
         type: 'card',
         position,
-        data: { label: 'Новая карточка', color: '#FFD700', done: false },
+        data: { label: 'Новая карточка', color: '#eeebddff', done: false },
       };
       setNodes(ns => [...ns, makeNode(raw)]);
       setEdges(es => addEdge({ id: crypto.randomUUID(), source: sourceId, target: newId, ...edgeStyle }, es));
@@ -183,6 +187,14 @@ const wrapperRef = useRef(null);
           nodeTypes={nodeTypes}
           defaultEdgeOptions={edgeStyle}
           fitView
+
+  // snapToGrid={true}
+  // snapGrid={[20, 20]}    // узлы будут «садиться» только на узлы 20×20
+
+
+
+
+
         >
           <Controls />
           <MiniMap nodeColor={n => (n.data.done ? '#8BC34A' : n.data.color)} />

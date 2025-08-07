@@ -17,7 +17,13 @@
 
 
 
- 
+ .react-flow__node-toolbar button {
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+}
 
 
 

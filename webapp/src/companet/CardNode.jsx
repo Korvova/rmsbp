@@ -1,4 +1,4 @@
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, NodeToolbar } from 'reactflow';
 import StatusToggle from './StatusToggle';          // ← новый компонент
 import './card.css';
 
@@ -18,6 +18,20 @@ import './card.css';
       className="card"
       style={{ background: done ? '#8BC34A' : color }}  // зелёный если done
     >
+
+
+
+      {/* ─── тулбар ─────────────── */}
+      <NodeToolbar showOnHover position={Position.Top}>
+        <button onClick={() => onToggle?.(id, !done)}>
+          {done ? '↺' : '✓'}
+        </button>
+        <button onClick={() => onDelete?.(id)}>🗑</button>
+      </NodeToolbar>
+      {/* ────────────────────────── */}
+
+
+
        {/* название */}
        <input
          className="title"
