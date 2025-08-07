@@ -59,3 +59,13 @@
   font-size: 16px;
   cursor: pointer;
 }
+
+
+.rule-wrapper { position: relative; display:inline-block; }
+.rule-btn     { border:none; background:transparent; cursor:pointer; }
+.rule-menu {
+  position:absolute; top:20px; right:0;
+  background:#fff; border:1px solid #ccc; padding:6px 8px; z-index:999;
+  display:flex; flex-direction:column; gap:4px; font-size:12px;
+}
+.rule-menu label { cursor:pointer; white-space:nowrap; }

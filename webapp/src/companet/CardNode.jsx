@@ -1,64 +1,68 @@
 import { Handle, Position, NodeToolbar } from 'reactflow';
-import StatusToggle from './StatusToggle';          // ← новый компонент
+import StatusToggle from './StatusToggle';
+import RuleMenu from './RuleMenu';
 import './card.css';
 
- export default function CardNode({ id, data }) {
+export default function CardNode({ id, data }) {
   const {
     label,
     color,
-    done,              // ✔ состояние чек-бокса
+    done,
+    rule,
+    status = 'pending',
     onTitle,
     onColor,
-    onToggle,          // ← новый коллбэк
+    onToggle,
     onDelete,
+    onRuleChange,
+    onCancel,
+    onFreeze,
   } = data;
 
-   return (
-    <div
-      className="card"
-      style={{ background: done ? '#8BC34A' : color }}  // зелёный если done
-    >
+  const cardColor = {
+    pending: done ? '#8BC34A' : color,
+    working: '#2196F3',
+    done:    '#8BC34A',
+    cancel:  '#F44336',
+    frozen:  '#B0BEC5',
+  }[status];
 
-
-
-      {/* ─── тулбар ─────────────── */}
+  return (
+    <div className="card" style={{ background: cardColor }}>
       <NodeToolbar showOnHover position={Position.Top}>
-        <button onClick={() => onToggle?.(id, !done)}>
-          {done ? '↺' : '✓'}
-        </button>
+        <button onClick={() => onToggle?.(id, !done)}>{done ? '↺' : '✓'}</button>
         <button onClick={() => onDelete?.(id)}>🗑</button>
+
+        <RuleMenu
+          value={rule}
+          onChange={val => onRuleChange?.(id, val)}
+          onCancel={() => onCancel?.(id)}
+          onFreeze={() => onFreeze?.(id)}
+        />
       </NodeToolbar>
-      {/* ────────────────────────── */}
 
+      <input
+        className="title"
+        value={label}
+        onChange={e => onTitle?.(id, e.target.value)}
+      />
 
-
-       {/* название */}
-       <input
-         className="title"
-         value={label}
-         onChange={e => onTitle?.(id, e.target.value)}
-       />
-
-      {/* чек-бокс */}
       <StatusToggle
         checked={done}
         onChange={val => onToggle?.(id, val)}
       />
 
-       {/* выбор цвета */}
-       <input
-         type="color"
-         value={color}
-         onChange={e => onColor?.(id, e.target.value)}
-         title="Цвет"
-       />
+      <input
+        type="color"
+        value={color}
+        onChange={e => onColor?.(id, e.target.value)}
+        title="Цвет"
+      />
 
-       {/* удалить */}
-       <button className="close" onClick={() => onDelete?.(id)}>×</button>
+      <button className="close" onClick={() => onDelete?.(id)}>×</button>
 
-       {/* коннекторы */}
-       <Handle type="target" position={Position.Left}  />
-       <Handle type="source" position={Position.Right} />
-     </div>
-   );
- }
+      <Handle type="target" position={Position.Left}/>
+      <Handle type="source" position={Position.Right}/>
+    </div>
+  );
+}
