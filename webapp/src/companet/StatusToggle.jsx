@@ -1,9 +1,24 @@
 // src/companet/StatusToggle.jsx
-export default function StatusToggle({ checked, onChange }) {
+export default function StatusToggle({ checked, onChange, avatarUrl, initials }) {
   return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-    
-      <span style={{ fontSize: 13 }}>Готово</span>
+    <label className="status-row">
+      <span
+        className="assignee-dot"
+        title={initials || 'Исполнитель'}
+        style={
+          avatarUrl
+            ? {
+                backgroundImage: `url(${avatarUrl})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }
+            : undefined
+        }
+      >
+        {!avatarUrl && initials ? (initials[0] || '').toUpperCase() : null}
+      </span>
+
+  
     </label>
   );
 }

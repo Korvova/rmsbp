@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import './rulemenu.css';
+import OverdueToggle from './OverdueToggle';
 
 const START_RULES = [
   { id: '',              label: 'Без условия' },
@@ -19,19 +20,11 @@ const CANCEL_MODES = [
 
 export default function RuleMenu({
   value, onChange,
-
-  cancelPolicy,
-  onCancelPolicyToggle,
-  onCancelPolicyChange,
-
+  cancelPolicy, onCancelPolicyToggle, onCancelPolicyChange,
   deps = [],
-
-  selectedDeps = [],
-  onToggleDep,
-
-  cancelSelectedDeps = [],
-  onToggleCancelDep,
-
+  selectedDeps = [], onToggleDep,
+  cancelSelectedDeps = [], onToggleCancelDep,
+  overdue, onOverdueChange,
   onCancel, onFreeze,
 }) {
   const [open, setOpen] = useState(false);
@@ -54,10 +47,9 @@ export default function RuleMenu({
 
       {open ? (
         <div className="rule-menu" role="dialog">
-          {/* ── Запуск ── */}
+          {/* Запуск */}
           <section className="rule-section">
             <div className="rule-title">Запустить после:</div>
-
             <div className="rule-options">
               {START_RULES.map(r => (
                 <div key={r.id}>
@@ -70,8 +62,6 @@ export default function RuleMenu({
                     />
                     {r.label}
                   </label>
-
-                  {/* список ВСТАВЛЯЕМ ПРЯМО ПОД afterSelected */}
                   {r.id === 'afterSelected' && showStartPicker && (
                     <div className="deps-inline">
                       {deps.length === 0 ? (
@@ -95,10 +85,9 @@ export default function RuleMenu({
             </div>
           </section>
 
-          {/* ── Отмена ── */}
+          {/* Отмена */}
           <section className="rule-section">
             <div className="rule-title">Политика отмены:</div>
-
             <div className="rule-options">
               <label className="toggle">
                 <input
@@ -121,8 +110,6 @@ export default function RuleMenu({
                       />
                       {m.label}
                     </label>
-
-                    {/* список ВСТАВЛЯЕМ ПРЯМО ПОД anySelectedCanceled */}
                     {m.id === 'anySelectedCanceled' && showCancelPicker && (
                       <div className="deps-inline">
                         {deps.length === 0 ? (
@@ -148,11 +135,14 @@ export default function RuleMenu({
           </section>
 
           <hr />
-          <div className="rule-actions">
-            <button type="button" onClick={onCancel}>❌ Отмена</button>
-            <button type="button" onClick={onFreeze}>❄️ Заморозить</button>
+          <div className="rule-actions" style={{ justifyContent:'space-between', alignItems:'center' }}>
+            <OverdueToggle checked={overdue} onChange={onOverdueChange} />
+            <div style={{ display:'flex', gap:6 }}>
+              <button type="button" onClick={onCancel}>❌ Отмена</button>
+              <button type="button" onClick={onFreeze}>❄️ Заморозить</button>
+            </div>
           </div>
-        </div>
+        </div> 
       ) : null}
     </div>
   );
