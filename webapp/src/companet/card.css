@@ -77,3 +77,36 @@
   overflow: hidden;                  /* обрезает фото по кругу */
   flex: 0 0 22px;
 }
+
+
+
+/* ряд под заголовком (аватар + сложность) */
+.meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 4px;
+}
+
+/* «гиря» сложности: чёрный круг с цифрой */
+.difficulty-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #111;
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.15);
+}
+
+/* подпись типа */
+.type-pill {
+  font-size: 12px;
+  opacity: .75;
+  margin-bottom: 6px;
+}
+

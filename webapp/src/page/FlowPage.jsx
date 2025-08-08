@@ -271,6 +271,14 @@ const [quickMenu, setQuickMenu] = useState({ show: false, x: 0, y: 0 });
         selectedDeps: [],
         cancelSelectedDeps: [],
         overdue: false,
+
+  status: 'pending',
+  initials: '',        // например: 'ИС'
+  avatarUrl: '',       // URL, если появится
+  difficulty: 0,    // 1..10, либо null
+  taskType: '',        // строка или ''
+
+
       },
     };
     setNodes((ns) => [...ns, makeNode(raw)]);
