@@ -1,35 +1,27 @@
-import React, { useState, useEffect } from 'react';
 import { Handle, Position, NodeToolbar } from 'reactflow';
-
+import { useState, useEffect } from 'react';
 import StatusToggle from './StatusToggle';
 import RuleMenu from './RuleMenu';
+import DescriptionModal from './DescriptionModal';
 import './card.css';
 
 export default function CardNode({ id, data }) {
   const {
-    label, color,
-    done,
-    rule,
-    status = 'pending',
-    initials, avatarUrl,
-    difficulty, taskType,
+    label, color, done, rule, status = 'pending',
+    initials, avatarUrl, difficulty, taskType,
     description = '',
-
-    onTitle, onColor, onToggle, onDelete,
-    onRuleChange,
+    onTitle, onToggle, onDelete, onRuleChange,
     onCancel, onFreeze,
     onCancelPolicyToggle, onCancelPolicyChange,
     deps, selectedDeps, onToggleDep,
     cancelPolicy, cancelSelectedDeps, onToggleCancelDep,
-
-    /** НОВОЕ: сохраняем описание */
-    onDescription,
+    onDescription, // сохраняем описание
   } = data;
 
-  // локальное редактирование описания
- const [descOpen, setDescOpen] = useState(false);
- const [descDraft, setDescDraft] = useState(description || '');
- useEffect(() => setDescDraft(description || ''), [description]);
+  // Локальный стейт для модалки
+  const [descOpen, setDescOpen]   = useState(false);
+  const [descDraft, setDescDraft] = useState(description || '');
+  useEffect(() => setDescDraft(description || ''), [description]);
 
   const cardColor = {
     pending:  done ? '#8BC34A' : color,
@@ -41,14 +33,8 @@ export default function CardNode({ id, data }) {
 
   return (
     <div className="card" style={{ background: cardColor }}>
-      {/* Заголовок */}
-      <input
-        className="title"
-        value={label}
-        onChange={e => onTitle?.(id, e.target.value)}
-      />
+      <input className="title" value={label} onChange={e => onTitle?.(id, e.target.value)} />
 
-      {/* ряд под заголовком: аватар + сложность */}
       <div className="meta-row">
         <StatusToggle avatarUrl={avatarUrl} initials={initials} />
         {typeof difficulty === 'number' && difficulty > 0 && (
@@ -56,52 +42,33 @@ export default function CardNode({ id, data }) {
         )}
       </div>
 
-      {/* тип задачи */}
       <div className="type-pill">{taskType || 'Без типа'}</div>
 
-      {/* коннекторы */}
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
 
-      {/* Тулбар СНИЗУ */}
-      <NodeToolbar showOnHover position={Position.Bottom}>
-        {/* Готово / Сброс */}
-        <button title="Готово / Сброс" onClick={() => onToggle?.(id, !done)}>
-          {done ? '↺' : '✓'}
-        </button>
-
-        {/* Удалить */}
+      <NodeToolbar position={Position.Bottom} align="center" offset={10}>
+        <button title="Готово / Сброс" onClick={() => onToggle?.(id, !done)}>{done ? '↺' : '✓'}</button>
         <button title="Удалить" onClick={() => onDelete?.(id)}>🗑</button>
-
-        {/* Наблюдатели (пока иконка) */}
         <button title="Наблюдатели">👁</button>
-
-        {/* Описание: панель редактирования */}
-        <button title="Описание" onClick={() => setDescOpen(v => !v)}>📋</button>
-
-        {/* Уведомления (пока иконка) */}
+        <button title="Описание" onClick={() => setDescOpen(true)}>📋</button>
         <button title="Уведомления">🔔</button>
-
-        {/* Комментарий (пока иконка) */}
         <button title="Комментарий">💬</button>
+            <button title="Дедлайн">📅</button>
 
-        {/* Условия: даём и ⚙️ и 🔀 как триггеры одного и того же меню */}
         <RuleMenu
           value={rule}
-          onChange={val => onRuleChange?.(id, val)}
+          onChange={(val) => onRuleChange?.(id, val)}
           deps={deps}
           selectedDeps={selectedDeps}
           onToggleDep={(edgeId, checked) => onToggleDep?.(id, edgeId, checked)}
-
           cancelPolicy={cancelPolicy}
-          onCancelPolicyToggle={enabled => onCancelPolicyToggle?.(id, enabled)}
-          onCancelPolicyChange={mode => onCancelPolicyChange?.(id, mode)}
+          onCancelPolicyToggle={(enabled) => onCancelPolicyToggle?.(id, enabled)}
+          onCancelPolicyChange={(mode) => onCancelPolicyChange?.(id, mode)}
           cancelSelectedDeps={cancelSelectedDeps}
           onToggleCancelDep={(edgeId, checked) => onToggleCancelDep?.(id, edgeId, checked)}
-
           onCancel={() => onCancel?.(id)}
           onFreeze={() => onFreeze?.(id)}
-
           renderTrigger={({ toggle }) => (
             <>
               <button title="Условия" onClick={toggle}>🔀</button>
@@ -111,25 +78,15 @@ export default function CardNode({ id, data }) {
         />
       </NodeToolbar>
 
-      {/* Поповер с описанием */}
-      {descOpen && (
-        <div className="desc-popover">
-          <textarea
-            value={descDraft}
-            onChange={e => setDescDraft(e.target.value)}
-            placeholder="Полное описание задачи…"
-          />
-          <div className="desc-actions">
-            <button onClick={() => { setDescOpen(false); setDescDraft(description || ''); }}>Отмена</button>
-            <button
-              className="primary"
-              onClick={() => { onDescription?.(id, descDraft); setDescOpen(false); }}
-            >
-              Сохранить
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Модалка описания */}
+      <DescriptionModal
+        open={descOpen}
+        value={descDraft}
+        onChange={setDescDraft}
+        onClose={() => { setDescOpen(false); setDescDraft(description || ''); }}
+        onSave={() => { onDescription?.(id, descDraft); setDescOpen(false); }}
+        title="Описание задачи"
+      />
     </div>
   );
 }
