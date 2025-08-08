@@ -33,6 +33,7 @@ function Canvas() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const didConnectRef = useRef(false);   // ← флаг: была ли нормальная связь
 
   /* ---------- фабрика узла ---------- */
   const makeNode = useCallback(raw => ({
@@ -176,9 +177,10 @@ function Canvas() {
   }, [makeNode]);
 
   /* ---------- onConnect ---------- */
-  const onConnect = useCallback(params =>
-    setEdges(es => addEdge({ ...params, ...baseEdge }, es)),
-  [setEdges]);
+ const onConnect = useCallback(params => {
+   didConnectRef.current = true;                             // отметим успех
+   setEdges(es => addEdge({ ...params, ...baseEdge }, es));
+ }, [setEdges]);
 
   /* ---------- Delete / Backspace ---------- */
   const onNodesDelete = useCallback(deleted =>
@@ -191,7 +193,18 @@ function Canvas() {
 
   const onConnectEnd = useCallback(ev => {
     const src = connectRef.current;
+
     connectRef.current = null;
+
+
+   // если связь уже создана штатно — ничего не добавляем
+   if (didConnectRef.current) {
+     didConnectRef.current = false;
+     return;
+   }
+
+
+
 
     if (!src || !wrapperRef.current || !ev.target.classList.contains('react-flow__pane'))
       return;
