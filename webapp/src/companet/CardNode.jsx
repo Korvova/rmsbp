@@ -35,7 +35,7 @@ export default function CardNode({ id, data }) {
 
   return (
     <div className="card" style={{ background: cardColor }}>
-      <NodeToolbar showOnHover position={Position.Top}>
+     <NodeToolbar position={Position.Top}>
         <button onClick={() => onToggle?.(id, !done)}>{done ? '↺' : '✓'}</button>
         <button onClick={() => onDelete?.(id)}>🗑</button>
         <RuleMenu

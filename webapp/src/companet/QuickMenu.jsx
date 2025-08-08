@@ -1,4 +1,5 @@
-import { useRef, useState, useMemo } from 'react';
+// src/companet/QuickMenu.jsx
+import { useRef, useState, useMemo, useEffect } from 'react';
 import './quickmenu.css';
 
 const BASE_TITLES = [
@@ -21,13 +22,14 @@ const EXTRA_TITLES = [
   'Механизм ролей и прав',
 ];
 
+/* Условия с id → это будут rule у целевого узла */
 const CONDITIONS = [
-  'Без условия',
-  'После завершения любой связанной',
-  'После завершения всех связанных',
-  'После выбранных связей',
-  'В дату (📅)',
-  'Через X дней (⏰)',
+  { id: '',               label: 'Без условия' },
+  { id: 'afterAny',       label: 'После завершения любой связанной' },
+  { id: 'afterAll',       label: 'После завершения всех связанных' },
+  { id: 'afterSelected',  label: 'После выбранных связей' },
+  { id: 'atDate',         label: 'В дату (📅)' },
+  { id: 'afterAnyDelay',  label: 'Через X дней (⏰)' },
 ];
 
 const BASE_ASSIGNEES = ['Иван', 'Ольга', 'Сергей', 'Айжан', 'Дмитрий'];
@@ -36,21 +38,21 @@ const EXTRA_ASSIGNEES = ['Мария','Алексей','Жанна','Павел'
 const DIFFICULTY = Array.from({ length: 10 }, (_, i) => String(i + 1));
 const TYPES      = ['Отчёт', 'рисеч', 'кодинг', 'ТЗ', 'встреча', 'преза', 'анализ', 'КП'];
 
-export default function QuickMenu({ x, y }) {
+export default function QuickMenu({ x, y, onDraftChange }) {
   const [hoverMain, setHoverMain] = useState(null); // 'title' | 'conditions' | 'assignee' | 'difficulty' | 'type' | null
 
-  // ===== Название (lvl1) =====
+  // ===== Название =====
   const [hoverTitleSub, setHoverTitleSub] = useState(false);
   const [titles, setTitles] = useState(BASE_TITLES);
   const extraIdxRef = useRef(0);
   const [pickedTitle, setPickedTitle] = useState(null);
   const [titleCancelled, setTitleCancelled] = useState(false);
 
-  // ===== Каскад: Название → Условия → Исполнитель → Сложность → Тип =====
+  // Каскад подменю
   const [hoverChainCond, setHoverChainCond]   = useState(false); // lvl2
   const [hoverChainAss,  setHoverChainAss]    = useState(false); // lvl3
-  const [hoverChainDiff, setHoverChainDiff]   = useState(false); // lvl4 (узкий)
-  const [hoverChainType, setHoverChainType]   = useState(false); // lvl5 (узкий)
+  const [hoverChainDiff, setHoverChainDiff]   = useState(false); // lvl4
+  const [hoverChainType, setHoverChainType]   = useState(false); // lvl5
 
   const showTitleSub  = (hoverMain === 'title') || hoverTitleSub || hoverChainCond || hoverChainAss || hoverChainDiff || hoverChainType;
   const showCondChain = hoverChainCond  || hoverChainAss || hoverChainDiff || hoverChainType;
@@ -75,8 +77,8 @@ export default function QuickMenu({ x, y }) {
     !pickedTitle && titleCancelled ? 'is-cancelled' : '',
   ].join(' '), [hoverMain, pickedTitle, titleCancelled]);
 
-  // ===== Условия (lvl2) =====
-  const [pickedCond, setPickedCond] = useState(null);
+  // ===== Условия =====
+  const [pickedCond, setPickedCond] = useState(null); // {id, label} | null
   const [condCancelled, setCondCancelled] = useState(false);
   const onPickCond = c => { setPickedCond(c); setCondCancelled(false); };
   const onCancelCond = () => { setPickedCond(null); setCondCancelled(true); };
@@ -88,7 +90,7 @@ export default function QuickMenu({ x, y }) {
     !pickedCond && condCancelled ? 'is-cancelled' : '',
   ].join(' '), [hoverMain, pickedCond, condCancelled]);
 
-  // ===== Исполнитель (lvl3) =====
+  // ===== Исполнитель =====
   const [assignees, setAssignees] = useState(BASE_ASSIGNEES);
   const assExtraIdxRef = useRef(0);
   const [pickedAss, setPickedAss] = useState(null);
@@ -111,7 +113,7 @@ export default function QuickMenu({ x, y }) {
     !pickedAss && assCancelled ? 'is-cancelled' : '',
   ].join(' '), [hoverMain, pickedAss, assCancelled]);
 
-  // ===== Сложность (lvl4, narrow) =====
+  // ===== Сложность =====
   const [pickedDiff, setPickedDiff] = useState(null);
   const [diffCancelled, setDiffCancelled] = useState(false);
   const onPickDiff   = d => { setPickedDiff(d); setDiffCancelled(false); };
@@ -124,7 +126,7 @@ export default function QuickMenu({ x, y }) {
     !pickedDiff && diffCancelled ? 'is-cancelled' : '',
   ].join(' '), [hoverMain, pickedDiff, diffCancelled]);
 
-  // ===== Тип (lvl5, narrow) =====
+  // ===== Тип =====
   const [pickedType, setPickedType] = useState(null);
   const [typeCancelled, setTypeCancelled] = useState(false);
   const onPickType   = t => { setPickedType(t); setTypeCancelled(false); };
@@ -137,7 +139,7 @@ export default function QuickMenu({ x, y }) {
     !pickedType && typeCancelled ? 'is-cancelled' : '',
   ].join(' '), [hoverMain, pickedType, typeCancelled]);
 
-  // ===== Hover-commit для нижних кнопок =====
+  // hover-commit для нижних кнопок (ещё/отмена)
   const hc = useRef({
     moreTitles:false, cancelTitle:false,
     cancelCond:false,
@@ -147,19 +149,30 @@ export default function QuickMenu({ x, y }) {
   const enter = key => () => { hc.current[key] = true; };
   const leave = (key, fn) => () => { if (hc.current[key]) fn(); hc.current[key] = false; };
 
+  // === Поднимаем черновик наверх при любом выборе ===
+  useEffect(() => {
+    onDraftChange?.({
+      title: pickedTitle || null,
+      conditionId: pickedCond?.id || '',
+      conditionLabel: pickedCond?.label || '',
+      assignee: pickedAss || null,
+      difficulty: pickedDiff || null,
+      type: pickedType || null,
+    });
+  }, [pickedTitle, pickedCond, pickedAss, pickedDiff, pickedType, onDraftChange]);
+
   return (
     <div className="quickmenu" style={{ left: x, top: y }}>
-      {/* Сводка выбранного */}
       <ul className="quickmenu-summary">
         <li><span className="sm-label">Название:</span>     <strong className="sm-value">{pickedTitle || '—'}</strong></li>
-        <li><span className="sm-label">Условия:</span>      <strong className="sm-value">{pickedCond  || '—'}</strong></li>
+        <li><span className="sm-label">Условия:</span>      <strong className="sm-value">{pickedCond?.label  || '—'}</strong></li>
         <li><span className="sm-label">Исполнитель:</span>  <strong className="sm-value">{pickedAss   || '—'}</strong></li>
         <li><span className="sm-label">Сложность:</span>    <strong className="sm-value">{pickedDiff  || '—'}</strong></li>
         <li><span className="sm-label">Тип:</span>          <strong className="sm-value">{pickedType  || '—'}</strong></li>
       </ul>
 
       <div className="quickmenu-inner">
-        {/* Название (lvl1) */}
+        {/* Название → … */}
         <div
           className={titleItemClass}
           onMouseEnter={() => setHoverMain('title')}
@@ -206,7 +219,7 @@ export default function QuickMenu({ x, y }) {
                 </div>
               </div>
 
-              {/* → Условия (lvl2) */}
+              {/* → Условия */}
               <div
                 className="qm-next-col"
                 title="Перейти к условиям →"
@@ -225,12 +238,12 @@ export default function QuickMenu({ x, y }) {
                   <div className="qm-col-list">
                     {CONDITIONS.map(c => (
                       <div
-                        key={c}
-                        className={'quickmenu-subitem ' + (pickedCond === c ? 'is-picked' : '')}
+                        key={c.id}
+                        className={'quickmenu-subitem ' + (pickedCond?.id === c.id ? 'is-picked' : '')}
                         onMouseEnter={() => onPickCond(c)}
                         onClick={() => onPickCond(c)}
                       >
-                        {c}
+                        {c.label}
                       </div>
                     ))}
 
@@ -248,7 +261,7 @@ export default function QuickMenu({ x, y }) {
                     </div>
                   </div>
 
-                  {/* → Исполнитель (lvl3) */}
+                  {/* → Исполнитель */}
                   <div
                     className="qm-next-col"
                     title="Перейти к исполнителю →"
@@ -297,7 +310,7 @@ export default function QuickMenu({ x, y }) {
                         </div>
                       </div>
 
-                      {/* → Сложность (lvl4, narrow) */}
+                      {/* → Сложность */}
                       <div
                         className="qm-next-col"
                         title="Перейти к сложности →"
@@ -339,7 +352,7 @@ export default function QuickMenu({ x, y }) {
                             </div>
                           </div>
 
-                          {/* → Тип (lvl5, narrow) */}
+                          {/* → Тип */}
                           <div
                             className="qm-next-col"
                             title="Перейти к типу →"
@@ -391,50 +404,24 @@ export default function QuickMenu({ x, y }) {
           )}
         </div>
 
-        {/* центральные ярлыки можно оставить/убрать */}
-     
-
-
-
-
-{/* центральные ярлыки */}
-<div
-  className={condItemClass}
-  onMouseEnter={() => setHoverMain('conditions')}
-  onMouseLeave={() => setHoverMain(null)}
->
-  Условия
-</div>
-
-<div
-  className={assItemClass}
-  onMouseEnter={() => setHoverMain('assignee')}
-  onMouseLeave={() => setHoverMain(null)}
->
-  Исполнитель
-</div>
-
-<div
-  className={diffItemClass}
-  onMouseEnter={() => setHoverMain('difficulty')}
-  onMouseLeave={() => setHoverMain(null)}
->
-  Сложность
-</div>
-
-<div
-  className={typeItemClass}
-  onMouseEnter={() => setHoverMain('type')}
-  onMouseLeave={() => setHoverMain(null)}
->
-  Тип
-</div>
-
-
-
-
-
+        <div className={condItemClass}>Условия</div>
+        <div className={assItemClass}>Исполнитель</div>
+        <div className={diffItemClass}>Сложность</div>
+        <div className={typeItemClass}>Тип</div>
       </div>
+
+          <div style={{
+        pointerEvents: 'auto',
+        marginTop: 6,
+        textAlign: 'center',
+        color: '#ddd',
+        fontSize: 11
+      }}>
+        Отпустите мышь, чтобы создать карточку
+      </div>
+
+
+      
     </div>
   );
 }
