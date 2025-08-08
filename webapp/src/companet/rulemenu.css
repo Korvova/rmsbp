@@ -1,23 +1,21 @@
 .rule-wrapper { position: relative; display:inline-block; }
-
-.rule-btn {
-  border:none; background:transparent; cursor:pointer;
-  font-size:16px; padding:2px;
-}
+.rule-btn { border:none; background:transparent; cursor:pointer; font-size:16px; padding:2px; }
 
 .rule-menu {
   position:absolute; top:22px; right:0; z-index:999;
   background:#fff; border:1px solid #ccc; border-radius:6px;
   box-shadow:0 2px 6px rgba(0,0,0,.05);
-  padding:6px 8px; display:flex; flex-direction:column; gap:4px;
-  font-size:12px;
+  padding:8px; display:flex; flex-direction:column; gap:8px; font-size:12px; min-width:260px;
 }
 
-.rule-menu hr{border:none; border-top:1px solid #ddd; margin:4px 0;}
-.rule-menu label{cursor:pointer; white-space:nowrap;}
-.rule-menu input{margin-right:4px;}
-.rule-menu button{
-  font-size:12px; background:#eee; border:1px solid #ccc;
-  border-radius:4px; cursor:pointer; padding:2px 6px;
-}
-.rule-menu button:hover{background:#e0e0e0;}
+.rule-section { display:flex; flex-direction:column; gap:4px; }
+.rule-title { font-weight:600; font-size:12px; opacity:.8; margin-bottom:2px; }
+.toggle { display:flex; align-items:center; gap:6px; margin:2px 0; }
+.cancel-group { display:flex; flex-direction:column; gap:4px; border:0; padding:0; margin:0; }
+
+.rule-menu hr { border:none; border-top:1px solid #eee; margin:4px 0; }
+.rule-actions { display:flex; gap:6px; }
+.rule-menu button { font-size:12px; background:#eee; border:1px solid #ccc; border-radius:4px; cursor:pointer; padding:2px 6px; }
+.rule-menu button:hover { background:#e0e0e0; }
+.rule-menu label { cursor:pointer; white-space:nowrap; }
+.rule-menu input { margin-right:4px; }

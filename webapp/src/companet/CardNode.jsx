@@ -10,6 +10,8 @@ export default function CardNode({ id, data }) {
     done,
     rule,
     status = 'pending',
+     cancelPolicy,                 // {enabled, mode}
+      onCancelPolicyToggle, onCancelPolicyChange,
     onTitle,
     onColor,
     onToggle,
@@ -36,6 +38,13 @@ export default function CardNode({ id, data }) {
         <RuleMenu
           value={rule}
           onChange={val => onRuleChange?.(id, val)}
+
+         cancelPolicy={cancelPolicy}
+         onCancelPolicyToggle={enabled => onCancelPolicyToggle?.(id, enabled)}
+         onCancelPolicyChange={mode => onCancelPolicyChange?.(id, mode)}
+
+
+
           onCancel={() => onCancel?.(id)}
           onFreeze={() => onFreeze?.(id)}
         />

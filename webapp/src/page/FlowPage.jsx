@@ -16,6 +16,7 @@ import 'reactflow/dist/style.css';
 import { loadFlow, saveFlow } from '../service/storage';
 import CardNode from '../companet/CardNode';
 import Toolbar  from '../companet/Toolbar';
+import DeletableEdge from '../companet/DeletableEdge';
 
 export default function FlowPage() {
   return (
@@ -27,7 +28,11 @@ export default function FlowPage() {
 
 function Canvas() {
   const rf          = useReactFlow();
-  const nodeTypes   = useMemo(() => ({ card: CardNode }), []);
+
+
+const nodeTypes   = useMemo(() => ({ card: CardNode }), []);
+const edgeTypes   = useMemo(() => ({ deletable: DeletableEdge }), []);
+
   const connectRef  = useRef(null);
   const wrapperRef  = useRef(null);
 
@@ -41,6 +46,7 @@ function Canvas() {
     data: {
       done: false,
       status: 'pending',
+       cancelPolicy: { enabled: false, mode: 'none' },
       ...raw.data,
 
       onTitle: (id, t) => setNodes(ns =>
@@ -61,6 +67,19 @@ function Canvas() {
       onFreeze: id => setNodes(ns =>
         ns.map(n => n.id === id ? { ...n, data:{ ...n.data, status:'frozen'}} : n)
       ),
+
+
+
+   onCancelPolicyToggle: (id, enabled) => setNodes(ns =>
+     ns.map(n => n.id === id ? { ...n, data:{ ...n.data, cancelPolicy:{ ...n.data.cancelPolicy, enabled } } } : n)
+   ),
+   onCancelPolicyChange: (id, mode) => setNodes(ns =>
+     ns.map(n => n.id === id ? { ...n, data:{ ...n.data, cancelPolicy:{ ...n.data.cancelPolicy, mode } } } : n)
+   ),
+
+
+
+
 
       onDelete: id => {
         setNodes(ns => ns.filter(n => n.id !== id));
@@ -102,23 +121,89 @@ function Canvas() {
     }
   };
 
+
+
+
+const cancelOverlay = (policy) => {
+  if (!policy?.enabled) return {};
+  switch (policy.mode) {
+    case 'prevCanceled':
+      return { animated:true, style:{ stroke:'#9C27B0', strokeDasharray:'6 4', strokeWidth:2 } };
+    case 'anySelectedCanceled':
+      return { animated:true, style:{ stroke:'#FF5252',  strokeDasharray:'6 4', strokeWidth:2 } }; // красный пунктир
+    case 'none':
+    default:
+      return {};
+  }
+};
+
+
+
+
+
+
+
+
   /* перекрашиваем рёбра, если rule изменился */
-  useEffect(() => {
+                     // edges не в зависимостях
+
+useEffect(() => {
   setEdges(es => {
     let changed = false;
+
     const next = es.map(e => {
-       const rule = nodes.find(n => n.id === e.target)?.data.rule;
-      const styled = { ...e, ...edgeStyleForRule(rule) };
-      if (!changed && (e.animated !== styled.animated ||
+      const srcNode = nodes.find(n => n.id === e.source);
+      const trgNode = nodes.find(n => n.id === e.target);
+
+      // 1) базовый стиль по правилу ЦЕЛИ
+      const ruleStyled   = edgeStyleForRule(trgNode?.data.rule);
+      // 2) оверлей политики отмены ЦЕЛИ
+      const cancelStyled = cancelOverlay(trgNode?.data.cancelPolicy);
+
+      let styled = {
+        ...e,
+        ...ruleStyled,
+        animated: cancelStyled.animated ?? ruleStyled.animated,
+        style: { ...ruleStyled.style, ...cancelStyled.style },
+        label: cancelStyled.label ?? ruleStyled.label,
+      };
+
+      // 3) принудительные перекрытия по статусам узлов
+      const srcStatus = srcNode?.data.status;
+      const trgStatus = trgNode?.data.status;
+
+      if (srcStatus === 'cancel' || trgStatus === 'cancel') {
+        styled = {
+          ...styled,
+          animated: false,
+          style: { ...styled.style, stroke: '#F44336', strokeDasharray: undefined },
+        };
+      } else if (srcStatus === 'done' || trgStatus === 'done') {
+        styled = {
+          ...styled,
+          animated: false,
+          style: { ...styled.style, stroke: '#4CAF50', strokeDasharray: undefined },
+        };
+      }
+
+      if (
+        !changed &&
+        (
+          e.animated !== styled.animated ||
           e.style?.stroke !== styled.style?.stroke ||
-          e.label !== styled.label)) changed = true;
+          e.style?.strokeDasharray !== styled.style?.strokeDasharray ||
+          e.label !== styled.label
+        )
+      ) {
+        changed = true;
+      }
+
       return styled;
     });
-    return changed ? next : es;      // <-- обновляем ТОЛЬКО если что-то поменялось
+
+    return changed ? next : es;
   });
-}, [nodes]);                         // edges не в зависимостях
-
-
+}, [nodes, edges]); // ← добавили edges
 
 
 
@@ -150,18 +235,41 @@ function Canvas() {
 
 
 
+/* если включена политика отмены, и любая предыдущая = cancel → текущая = cancel */
+useEffect(() => {
+  setNodes(ns => {
+    let changed = false;
+    const next = ns.map(t => {
+      const policy = t.data.cancelPolicy;
+      if (!policy?.enabled || policy.mode === 'none') return t;
 
+      const incoming = edges.filter(e => e.target === t.id);
+      const anyCanceled = incoming.some(e => {
+        const src = ns.find(n => n.id === e.source);
+        return src?.data.status === 'cancel';
+      });
+
+      // отмена сильнее "в работу"; не трогаем, если уже done или cancel
+      if (anyCanceled && t.data.status !== 'cancel' && t.data.status !== 'done') {
+        changed = true;
+        return { ...t, data: { ...t.data, status: 'cancel' } };
+      }
+      return t;
+    });
+    return changed ? next : ns;
+  });
+}, [nodes, edges]);
 
 
 
 
   /* ---------- базовый стиль рёбер ---------- */
   const baseEdge = {
-    type:'default',
+     type:'deletable',
   animated:false,
   style:{ stroke:'#007BFF', strokeWidth:2 },   // ← сплошная
     markerEnd:{ type:MarkerType.ArrowClosed, color:'#007BFF' },
-    label:'📅',
+    label:'',
     labelStyle:{ fill:'#007BFF', fontWeight:600 },
   };
 
@@ -171,7 +279,10 @@ function Canvas() {
       id: crypto.randomUUID(),
       type:'card',
       position:{ x:100, y:100 },
-      data:{ label:'Новая карточка', color:'#fcf9e9', rule:'' },
+      data:{ label:'Новая карточка', color:'#fcf9e9', rule:'',
+       cancelPolicy:{ enabled:false, mode:'none' } },
+
+
     };
     setNodes(ns => [...ns, makeNode(raw)]);
   }, [makeNode]);
@@ -226,7 +337,7 @@ function Canvas() {
       ...n,
       data:{
         label:data.label, color:data.color, done:data.done,
-        rule:data.rule,   status:data.status,
+        rule:data.rule,   status:data.status, cancelPolicy:data.cancelPolicy,
       },
     }));
     saveFlow({ nodes:plain, edges });
@@ -243,6 +354,7 @@ function Canvas() {
       <div ref={wrapperRef} style={{ width:'100%', height:'100vh' }}>
         <ReactFlow
           nodes={nodes} edges={edges}
+          edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
