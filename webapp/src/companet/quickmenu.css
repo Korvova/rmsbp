@@ -1,0 +1,113 @@
+.quickmenu {
+  position: absolute;
+  z-index: 1000;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Сводка как список */
+.quickmenu-summary{
+  pointer-events: auto;
+  background: rgba(0,0,0,.6);
+  color:#fff;
+  padding: 6px 8px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  list-style: none;
+  display: block;
+}
+.quickmenu-summary li{
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 2px 0;
+}
+.sm-label{ opacity:.75; }
+.sm-value{ font-weight:600; }
+
+.quickmenu-inner {
+  pointer-events: auto;
+  background: rgba(0,0,0,.85);
+  color: #fff;
+  padding: 6px 8px;
+  border-radius: 8px;
+  display: flex;
+  gap: 8px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.25);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.quickmenu-item {
+  position: relative;
+  background: rgba(255,255,255,.08);
+  padding: 6px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  transition: background .15s ease, color .15s ease;
+}
+.quickmenu-item.is-active   { background: rgba(33,150,243,.85); }
+.quickmenu-item.is-picked   { background: rgba(76,175,80,.55); color:#eaffea; }
+.quickmenu-item.is-cancelled{ background: rgba(244,67,54,.75); color:#fff; }
+.quickmenu-item + .quickmenu-item { margin-left: 6px; }
+
+/* мостик для стабильного hover между пунктом и подсписком */
+.quickmenu-item.has-sub { padding-bottom: 12px; }
+
+/* выпадашка */
+.quickmenu-sub {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  background: #222;
+  color: #dfe6ec;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 8px;
+  min-width: 280px;
+  max-height: 220px;
+  overflow: auto;
+  padding: 6px;
+  box-shadow: 0 8px 20px rgba(0,0,0,.35);
+}
+
+.quickmenu-sep { height: 1px; background: rgba(255,255,255,.12); margin: 6px 0; }
+
+/* низ выпадашки: Ещё / Отмена */
+.quickmenu-subfoot{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap:8px;
+}
+.qm-foot-spacer{ flex:1; }
+
+.qm-link{
+  font-size:12px; color:#cfeaff;
+  background: transparent;
+  border: 1px solid rgba(207,234,255,.35);
+  border-radius: 6px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.qm-link:hover{ background: rgba(33,150,243,.25); }
+.qm-link.danger{
+  color:#ffd7d7;
+  border-color: rgba(255,215,215,.35);
+}
+.qm-link.danger:hover{ background: rgba(244,67,54,.35); }
+
+.quickmenu-subitem {
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: default;
+  transition: background .12s ease, color .12s ease;
+}
+.quickmenu-subitem:hover {
+  background: rgba(76,175,80,.25);
+  color: #c8f7c5;
+}
+.quickmenu-subitem.is-picked {
+  background: rgba(76,175,80,.55);
+  color: #eaffea;
+}

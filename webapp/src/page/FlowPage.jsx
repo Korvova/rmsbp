@@ -10,7 +10,13 @@ import {
   useNodesState,
   useEdgesState,
 } from 'reactflow';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+
+
+
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import QuickMenu from '../companet/QuickMenu';
+
 import 'reactflow/dist/style.css';
 
 import { loadFlow, saveFlow } from '../service/storage';
@@ -33,6 +39,10 @@ function Canvas() {
   const connectRef   = useRef(null);
   const wrapperRef   = useRef(null);
   const didConnectRef = useRef(false);
+
+
+const [quickMenu, setQuickMenu] = useState({ show: false, x: 0, y: 0 });
+
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -270,6 +280,7 @@ function Canvas() {
     (params) => {
       didConnectRef.current = true;
       setEdges((es) => addEdge({ ...params, ...baseEdge }, es));
+       setQuickMenu(m => ({ ...m, show: false }));
     },
     [setEdges]
   );
@@ -279,10 +290,32 @@ function Canvas() {
     [setEdges]
   );
 
-  const onConnectStart = (_, { nodeId }) => (connectRef.current = nodeId);
+
+
+
+const onConnectStart = (event, { nodeId }) => {
+  connectRef.current = nodeId;
+  // позиция меню: от точки старта + смещение
+  const bounds = wrapperRef.current?.getBoundingClientRect();
+  if (!bounds) return;
+  const startX = event.clientX - bounds.left;
+  const startY = event.clientY - bounds.top;
+
+const MENU_OFFSET_X = 200;  // вправо на 100px
+const MENU_OFFSET_Y = -150;  // вверх на 40px
+
+  // смещаем на ~100px вправо и чуть вверх
+ setQuickMenu({ show: true, x: startX + MENU_OFFSET_X, y: startY + MENU_OFFSET_Y });
+};
+
+
+
 
   const onConnectEnd = useCallback(
     (ev) => {
+
+
+      setQuickMenu(m => ({ ...m, show: false }));
       const src = connectRef.current;
       connectRef.current = null;
 
@@ -370,6 +403,12 @@ function Canvas() {
           />
           <Background />
         </ReactFlow>
+
+{quickMenu.show && (
+  <QuickMenu x={quickMenu.x} y={quickMenu.y} />
+)}
+
+
       </div>
     </>
   );
