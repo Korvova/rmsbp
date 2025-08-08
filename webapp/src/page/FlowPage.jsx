@@ -1,4 +1,4 @@
-// src/companet/FlowPage.jsx
+// src/page/FlowPage.jsx
 import {
   ReactFlowProvider,
   useReactFlow,
@@ -23,14 +23,7 @@ import QuickMenu     from '../companet/QuickMenu';
 const NODE_TYPES = { card: CardNode };
 const EDGE_TYPES = { deletable: DeletableEdge };
 
-const initialDraft = {
-  title: null,
-  conditionId: '',
-  conditionLabel: '',
-  assignee: null,
-  difficulty: null,
-  type: null,
-};
+const initialDraft = { title:null, conditionId:'', conditionLabel:'', assignee:null, difficulty:null, type:null };
 
 export default function FlowPage() {
   return (
@@ -46,8 +39,12 @@ function Canvas() {
   const wrapperRef    = useRef(null);
   const didConnectRef = useRef(false);
 
+  // ↓ НОВОЕ: подавляем клик, который приходит сразу после mouseup
+const suppressClickRef = useRef(false);
+
   const [quickMenu, setQuickMenu] = useState({ show: false, x: 0, y: 0 });
   const [draft, setDraft]         = useState(initialDraft);
+  const [composing, setComposing] = useState(false);
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -60,14 +57,10 @@ function Canvas() {
         done: false,
         status: 'pending',
         cancelPolicy: { enabled: false, mode: 'none' },
-        selectedDeps: [],
-        cancelSelectedDeps: [],
+        selectedDeps: [], cancelSelectedDeps: [],
         overdue: false,
-        initials: '',
-        avatarUrl: '',
-        difficulty: 0,
-        taskType: '',
-        description: '',
+        initials: '', avatarUrl: '',
+        difficulty: 0, taskType: '', description: '',
         ...raw.data,
 
         onTitle: (id, t) =>
@@ -93,14 +86,10 @@ function Canvas() {
             n.id === id ? { ...n, data:{ ...n.data, cancelPolicy:{ ...n.data.cancelPolicy, mode } } } : n
           )),
 
-
-
-  onDescription: (id, text) =>
-    setNodes(ns => ns.map(n =>
-      n.id === id ? { ...n, data:{ ...n.data, description: text } } : n
-    )),
-
-
+        onDescription: (id, text) =>
+          setNodes(ns => ns.map(n =>
+            n.id === id ? { ...n, data:{ ...n.data, description: text } } : n
+          )),
 
         onToggleDep: (id, edgeId, checked) =>
           setNodes(ns => ns.map(n => {
@@ -273,25 +262,34 @@ function Canvas() {
         color: '#fcf9e9',
         rule: '',
         cancelPolicy: { enabled: false, mode: 'none' },
-        selectedDeps: [],
-        cancelSelectedDeps: [],
+        selectedDeps: [], cancelSelectedDeps: [],
         overdue: false,
         status: 'pending',
-        initials: '',
-        avatarUrl: '',
-        difficulty: 0,
-        taskType: '',
-        description: '',
+        initials: '', avatarUrl: '',
+        difficulty: 0, taskType: '', description: '',
       },
     };
     setNodes(ns => [...ns, makeNode(raw)]);
   }, [makeNode]);
 
-  const onConnect = useCallback((params) => {
-    didConnectRef.current = true;
-    setEdges(es => addEdge({ ...params, ...baseEdge }, es));
-    setQuickMenu(m => ({ ...m, show: false }));
-  }, [setEdges]);
+
+
+
+const onConnect = useCallback((params) => {
+  didConnectRef.current = true;
+  setEdges(es => addEdge({ ...params, ...baseEdge }, es));
+
+  // закрываем меню и выходим из режима набора
+  setQuickMenu(m => ({ ...m, show: false }));
+  setComposing(false);
+  connectRef.current = null;
+  if (wrapperRef.current) wrapperRef.current.style.cursor = '';
+}, [setEdges]);
+
+
+
+
+
 
   const onNodesDelete = useCallback(
     (deleted) => setEdges(es => es.filter(e => !deleted.some(d => e.source === d.id || e.target === d.id))),
@@ -310,94 +308,181 @@ function Canvas() {
     const MENU_OFFSET_Y = -150;
 
     setQuickMenu({ show: true, x: startX + MENU_OFFSET_X, y: startY + MENU_OFFSET_Y });
+    setComposing(true); // включили режим набора
   };
 
-  // отпустили мышь — возможно создаём новый узел из draft
-  const onConnectEnd = useCallback((ev) => {
-    // не скрываем draft до использования; меню скрываем
-    setQuickMenu(m => ({ ...m, show: false }));
+// src/page/FlowPage.jsx — заменить onConnectEnd
+const onConnectEnd = useCallback((ev) => {
+  if (!composing || !wrapperRef.current || !connectRef.current) return;
 
-    const src = connectRef.current;
-    connectRef.current = null;
+  // Создаём ноду только если отпустили мышь на полотне
+  const isPane = ev?.target?.classList?.contains?.('react-flow__pane');
+  if (!isPane) return;
 
-    if (didConnectRef.current) {
-      didConnectRef.current = false;
-      return;
-    }
-    if (!src || !wrapperRef.current || !ev.target.classList.contains('react-flow__pane')) return;
+  const bounds = wrapperRef.current.getBoundingClientRect();
+  const pos    = rf.project({ x: ev.clientX - bounds.left, y: ev.clientY - bounds.top });
 
-    const bounds = wrapperRef.current.getBoundingClientRect();
-    const position = rf.project({ x: ev.clientX - bounds.left, y: ev.clientY - bounds.top });
+  const label      = draft.title || 'Новая карточка';
+  const rule       = draft.conditionId || '';
+  const initials   = draft.assignee ? draft.assignee.split(' ').map(s => s[0]).join('').slice(0,2).toUpperCase() : '';
+  const difficulty = draft.difficulty ? Number(draft.difficulty) : 0;
+  const taskType   = draft.type || '';
 
-    // применяем выбранные значения из draft
-    const label = draft.title || 'Новая карточка';
-    const rule  = draft.conditionId || '';
-    const initials = draft.assignee
-      ? draft.assignee.split(' ').map(s => s[0]).join('').slice(0,2).toUpperCase()
-      : '';
-    const difficulty = draft.difficulty ? Number(draft.difficulty) : 0;
-    const taskType   = draft.type || '';
+  const newId = crypto.randomUUID();
+  const srcId = connectRef.current; // фиксируем источник до очистки
 
-    const newId = crypto.randomUUID();
-    const raw = {
-      id: newId,
-      type: 'card',
-      position,
-      data: {
-        label,
-        color: '#eeebdd',
-        rule,
-        cancelPolicy: { enabled: false, mode: 'none' },
-        selectedDeps: [],
-        cancelSelectedDeps: [],
-        overdue: false,
-        status: 'pending',
-        initials,
-        avatarUrl: '',
-        difficulty,
-        taskType,
+  const raw = {
+    id: newId,
+    type: 'card',
+    position: pos,
+    data: {
+      label, color:'#eeebdd', rule,
+      cancelPolicy:{ enabled:false, mode:'none' },
+      selectedDeps:[], cancelSelectedDeps:[], overdue:false,
+      status:'pending', initials, avatarUrl:'', difficulty, taskType,
+    },
+  };
+
+  // 1) добавляем ноду
+  setNodes(ns => [...ns, makeNode(raw)]);
+
+  // 2) добавляем ребро после обновления стора
+  requestAnimationFrame(() => {
+    setEdges(es => [
+      ...es,
+      { id: crypto.randomUUID(), source: srcId, target: newId, ...baseEdge },
+    ]);
+  });
+
+  // 3) выходим из режима
+  setDraft(initialDraft);
+  setQuickMenu(m => ({ ...m, show:false }));
+  setComposing(false);
+  connectRef.current = null;
+
+  // 4) подавляем следующий клик ТОЛЬКО в этом сценарии,
+  //    чтобы не создать вторую карточку
+  suppressClickRef.current = true;
+}, [composing, draft, rf, makeNode]);
+
+
+  // клик по пустому месту — создать карточку
+
+
+
+  const onPaneClick = useCallback((ev) => {
+  if (!composing) return;
+
+  // если это "хвостовой" клик сразу после mouseup — пропускаем один раз
+  if (suppressClickRef.current) {
+    suppressClickRef.current = false;
+    return;
+  }
+
+  if (!wrapperRef.current || !connectRef.current) return;
+
+  const bounds = wrapperRef.current.getBoundingClientRect();
+  const pos    = rf.project({ x: ev.clientX - bounds.left, y: ev.clientY - bounds.top });
+
+  const label      = draft.title || 'Новая карточка';
+  const rule       = draft.conditionId || '';
+  const initials   = draft.assignee ? draft.assignee.split(' ').map(s => s[0]).join('').slice(0,2).toUpperCase() : '';
+  const difficulty = draft.difficulty ? Number(draft.difficulty) : 0;
+  const taskType   = draft.type || '';
+
+  const newId = crypto.randomUUID();
+  const srcId = connectRef.current;           // ← фиксируем ИД источника заранее!
+
+  const raw = {
+    id: newId,
+    type: 'card',
+    position: pos,
+    data: {
+      label, color:'#eeebdd', rule,
+      cancelPolicy:{ enabled:false, mode:'none' },
+      selectedDeps:[], cancelSelectedDeps:[], overdue:false,
+      status:'pending', initials, avatarUrl:'', difficulty, taskType,
+    },
+  };
+
+  // 1) сначала добавляем НОДУ
+  setNodes(ns => [...ns, makeNode(raw)]);
+
+  // 2) потом — РЕБРО, когда DOM/стор уже успел обновиться
+  requestAnimationFrame(() => {
+    setEdges(es => [
+      ...es,
+      {
+        id: crypto.randomUUID(),
+        source: srcId,
+        target: newId,
+        ...baseEdge,
       },
+    ]);
+  });
+
+  // 3) выходим из режима
+  setDraft(initialDraft);
+  setQuickMenu(m => ({ ...m, show:false }));
+  setComposing(false);
+  connectRef.current = null;
+  if (wrapperRef.current) wrapperRef.current.style.cursor = '';
+}, [composing, draft, rf, makeNode]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  // Esc — отмена режима
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape' && composing) {
+        setComposing(false);
+        setQuickMenu(m => ({ ...m, show:false }));
+        connectRef.current = null;
+      }
     };
-
-    setNodes(ns => [...ns, makeNode(raw)]);
-    setEdges(es => addEdge({ id: crypto.randomUUID(), source: src, target: newId, ...baseEdge }, es));
-
-    // сбросить драфт после создания
-    setDraft(initialDraft);
-  }, [rf, makeNode, baseEdge, draft]);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [composing]);
 
   // persist
-useEffect(() => {
-  const plain = nodes.map(({ data, ...n }) => ({
-    ...n,
-    data: {
-      label: data.label,
-      color: data.color,
-      done: data.done,
-      rule: data.rule,
-      status: data.status,
-      cancelPolicy: data.cancelPolicy,
-      selectedDeps: data.selectedDeps || [],
-      cancelSelectedDeps: data.cancelSelectedDeps || [],
-      overdue: !!data.overdue,
+  useEffect(() => {
+    const plain = nodes.map(({ data, ...n }) => ({
+      ...n,
+      data: {
+        label: data.label,
+        color: data.color,
+        done: data.done,
+        rule: data.rule,
+        status: data.status,
+        cancelPolicy: data.cancelPolicy,
+        selectedDeps: data.selectedDeps || [],
+        cancelSelectedDeps: data.cancelSelectedDeps || [],
+        overdue: !!data.overdue,
 
-      // единая версия, без дублей:
-      initials: data.initials || '',
-      avatarUrl: data.avatarUrl || '',
-      difficulty: typeof data.difficulty === 'number' ? data.difficulty : 0,
-      taskType: data.taskType || '',
-      description: data.description || '',
-    },
-  }));
-  saveFlow({ nodes: plain, edges });
-}, [nodes, edges]);
+        initials: data.initials || '',
+        avatarUrl: data.avatarUrl || '',
+        difficulty: typeof data.difficulty === 'number' ? data.difficulty : 0,
+        taskType: data.taskType || '',
+        description: data.description || '',
+      },
+    }));
+    saveFlow({ nodes: plain, edges });
+  }, [nodes, edges]);
 
-
-
-
-
-
-  // deps для RuleMenu в узлах
+  // deps для RuleMenu
   const nodesView = useMemo(() =>
     nodes.map(n => {
       const incoming = edges.filter(e => e.target === n.id);
@@ -419,7 +504,14 @@ useEffect(() => {
         }}
       />
 
-      <div ref={wrapperRef} style={{ width:'100%', height:'100vh' }}>
+<div
+  ref={wrapperRef}
+  className={composing ? 'rf-draft-cursor' : ''}
+  style={{ width:'100%', height:'100vh' }}
+>
+
+
+
         <ReactFlow
           nodes={nodesView}
           edges={edges}
@@ -431,9 +523,17 @@ useEffect(() => {
           onNodesDelete={onNodesDelete}
           onConnectStart={onConnectStart}
           onConnectEnd={onConnectEnd}
+          onPaneClick={onPaneClick}
           deleteKeyCode={['Delete','Backspace']}
           defaultEdgeOptions={baseEdge}
           fitView
+           panOnDrag={!composing}   // ← добавили
+
+          selectionOnDrag={composing ? false : true}
+          nodesDraggable={composing ? false : true}
+
+
+
         >
           <Controls />
           <MiniMap nodeColor={n => n.data.status === 'working'

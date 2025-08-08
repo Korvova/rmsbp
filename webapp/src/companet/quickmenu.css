@@ -3,7 +3,7 @@
   position: absolute;
   z-index: 1000;
   transform: translate(-50%, -50%);
-  pointer-events: none;
+ /* pointer-events: none; */
 
   /* зазор между колонками справа */
   --qm-xgap: 10px;
@@ -16,6 +16,10 @@
   --qm-w-difficulty: 20px;  /* level-4 (узкий) */
   --qm-w-type:       100px;  /* level-5 (узкий) */
 }
+
+
+.quickmenu, .quickmenu * { cursor: copy; }
+
 
 /* Сводка выбранных значений */
 .quickmenu-summary{
@@ -199,3 +203,12 @@
 .quickmenu-sub.level-4 .qm-col-list{ min-width: var(--qm-w-difficulty); }
 /* Тип */
 .quickmenu-sub.level-5 .qm-col-list{ min-width: var(--qm-w-type); }
+
+
+/* Режим обычных дропдаунов под каждой кнопкой */
+.quickmenu-sub.dropdown {
+  top: 100% !important;
+  left: 0 !important;
+  z-index: 1000;
+  padding-right: 8px;
+}
