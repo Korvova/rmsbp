@@ -107,18 +107,36 @@
   min-width: var(--qm-w-default, 260px);
   max-height: 240px;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 4px;
+
+  /* фикс перекрытия текстов полосой прокрутки */
+  scrollbar-gutter: stable both-edges;  /* резервирует место */
+  padding-right: 10px;                  /* небольшой отступ под скролл */
 }
-.quickmenu-subitem {
+
+
+
+
+
+.quickmenu-subitem{
   padding: 6px 8px;
   border-radius: 6px;
-  white-space: nowrap;
   cursor: default;
-  overflow: hidden;
-  text-overflow: ellipsis;
+
+  /* чтобы длинные названия не «резались» */
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.25;
 }
+
+
+
+
+
+
 .quickmenu-subitem:hover,
 .quickmenu-subitem.is-picked {
   background: rgba(76,175,80,.55);

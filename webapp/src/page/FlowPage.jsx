@@ -67,6 +67,7 @@ function Canvas() {
         avatarUrl: '',
         difficulty: 0,
         taskType: '',
+        description: '',
         ...raw.data,
 
         onTitle: (id, t) =>
@@ -91,6 +92,15 @@ function Canvas() {
           setNodes(ns => ns.map(n =>
             n.id === id ? { ...n, data:{ ...n.data, cancelPolicy:{ ...n.data.cancelPolicy, mode } } } : n
           )),
+
+
+
+  onDescription: (id, text) =>
+    setNodes(ns => ns.map(n =>
+      n.id === id ? { ...n, data:{ ...n.data, description: text } } : n
+    )),
+
+
 
         onToggleDep: (id, edgeId, checked) =>
           setNodes(ns => ns.map(n => {
@@ -271,6 +281,7 @@ function Canvas() {
         avatarUrl: '',
         difficulty: 0,
         taskType: '',
+        description: '',
       },
     };
     setNodes(ns => [...ns, makeNode(raw)]);
@@ -356,27 +367,35 @@ function Canvas() {
   }, [rf, makeNode, baseEdge, draft]);
 
   // persist
-  useEffect(() => {
-    const plain = nodes.map(({ data, ...n }) => ({
-      ...n,
-      data: {
-        label: data.label,
-        color: data.color,
-        done: data.done,
-        rule: data.rule,
-        status: data.status,
-        cancelPolicy: data.cancelPolicy,
-        selectedDeps: data.selectedDeps || [],
-        cancelSelectedDeps: data.cancelSelectedDeps || [],
-        overdue: !!data.overdue,
-        initials: data.initials || '',
-        avatarUrl: data.avatarUrl || '',
-        difficulty: Number(data.difficulty || 0),
-        taskType: data.taskType || '',
-      },
-    }));
-    saveFlow({ nodes: plain, edges });
-  }, [nodes, edges]);
+useEffect(() => {
+  const plain = nodes.map(({ data, ...n }) => ({
+    ...n,
+    data: {
+      label: data.label,
+      color: data.color,
+      done: data.done,
+      rule: data.rule,
+      status: data.status,
+      cancelPolicy: data.cancelPolicy,
+      selectedDeps: data.selectedDeps || [],
+      cancelSelectedDeps: data.cancelSelectedDeps || [],
+      overdue: !!data.overdue,
+
+      // единая версия, без дублей:
+      initials: data.initials || '',
+      avatarUrl: data.avatarUrl || '',
+      difficulty: typeof data.difficulty === 'number' ? data.difficulty : 0,
+      taskType: data.taskType || '',
+      description: data.description || '',
+    },
+  }));
+  saveFlow({ nodes: plain, edges });
+}, [nodes, edges]);
+
+
+
+
+
 
   // deps для RuleMenu в узлах
   const nodesView = useMemo(() =>
