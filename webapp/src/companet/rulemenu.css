@@ -5,12 +5,18 @@
   position:absolute; top:22px; right:0; z-index:999;
   background:#fff; border:1px solid #ccc; border-radius:6px;
   box-shadow:0 2px 6px rgba(0,0,0,.05);
-  padding:8px; display:flex; flex-direction:column; gap:8px; font-size:12px; min-width:260px;
+  padding:8px; min-width:260px;
+  display:flex; flex-direction:column; gap:8px; font-size:12px;
 }
 
-.rule-section { display:flex; flex-direction:column; gap:4px; }
-.rule-title { font-weight:600; font-size:12px; opacity:.8; margin-bottom:2px; }
-.toggle { display:flex; align-items:center; gap:6px; margin:2px 0; }
+/* строгий порядок внутри секции */
+.rule-section { display:grid; grid-template-areas:"title" "list" "options"; grid-auto-rows:min-content; row-gap:6px; }
+.rule-title   { grid-area:title;  font-weight:600; font-size:12px; opacity:.85; }
+.deps-list    { grid-area:list;   max-height:160px; overflow:auto; display:flex; flex-direction:column; gap:4px; }
+.rule-options { grid-area:options; display:flex; flex-direction:column; gap:4px; }
+
+.muted { color:#999; }
+.toggle { display:flex; align-items:center; gap:6px; }
 .cancel-group { display:flex; flex-direction:column; gap:4px; border:0; padding:0; margin:0; }
 
 .rule-menu hr { border:none; border-top:1px solid #eee; margin:4px 0; }
@@ -19,3 +25,13 @@
 .rule-menu button:hover { background:#e0e0e0; }
 .rule-menu label { cursor:pointer; white-space:nowrap; }
 .rule-menu input { margin-right:4px; }
+
+
+/* остальное оставь как есть у тебя сейчас */
+
+.deps-inline {
+  margin: 6px 0 4px 18px;          /* отступ под радио-пунктом */
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

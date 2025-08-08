@@ -12,76 +12,148 @@ const START_RULES = [
 ];
 
 const CANCEL_MODES = [
-  { id: 'none',                    label: 'Ничего не делать' },
-  { id: 'prevCanceled',            label: 'Отменить, если предыдущая отменена' },
-  { id: 'anySelectedCanceled',     label: 'Отменить, если одна из выбранных отменена' },
+  { id: 'none',                label: 'Ничего не делать' },
+  { id: 'prevCanceled',        label: 'Отменить, если предыдущая отменена' },
+  { id: 'anySelectedCanceled', label: 'Отменить, если одна из выбранных отменена' },
 ];
 
 export default function RuleMenu({
-  value,                         // старт-правило
-  onChange,
-  cancelPolicy,                  // { enabled:boolean, mode:'none'|'prevCanceled'|'anySelectedCanceled' }
-  onCancelPolicyToggle,          // (enabled:boolean)=>void
-  onCancelPolicyChange,          // (mode)=>void
-  onCancel,                      // кнопка ❌
-  onFreeze,                      // кнопка ❄️
+  value, onChange,
+
+  cancelPolicy,
+  onCancelPolicyToggle,
+  onCancelPolicyChange,
+
+  deps = [],
+
+  selectedDeps = [],
+  onToggleDep,
+
+  cancelSelectedDeps = [],
+  onToggleCancelDep,
+
+  onCancel, onFreeze,
 }) {
   const [open, setOpen] = useState(false);
 
+  const showStartPicker  = value === 'afterSelected';
+  const showCancelPicker = !!(cancelPolicy?.enabled && cancelPolicy?.mode === 'anySelectedCanceled');
+
   return (
     <div className="rule-wrapper">
-      <button className="rule-btn" onClick={() => setOpen(o => !o)}>⚙️</button>
+      <button
+        type="button"
+        className="rule-btn"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        title="Настройки"
+      >
+        ⚙️
+      </button>
 
-      {open && (
-        <div className="rule-menu">
-          <div className="rule-section">
+      {open ? (
+        <div className="rule-menu" role="dialog">
+          {/* ── Запуск ── */}
+          <section className="rule-section">
             <div className="rule-title">Запустить после:</div>
-            {START_RULES.map(r => (
-              <label key={r.id}>
-                <input
-                  type="radio"
-                  name="start_rule"
-                  checked={value === r.id}
-                  onChange={() => onChange(r.id)}
-                />
-                {r.label}
-              </label>
-            ))}
-          </div>
 
-          <div className="rule-section">
-            <div className="rule-title">Политика отмены:</div>
-            <label className="toggle">
-              <input
-                type="checkbox"
-                checked={!!cancelPolicy?.enabled}
-                onChange={e => onCancelPolicyToggle?.(e.target.checked)}
-              />
-              Включить
-            </label>
+            <div className="rule-options">
+              {START_RULES.map(r => (
+                <div key={r.id}>
+                  <label>
+                    <input
+                      type="radio"
+                      name="start_rule"
+                      checked={value === r.id}
+                      onChange={() => onChange(r.id)}
+                    />
+                    {r.label}
+                  </label>
 
-            <fieldset disabled={!cancelPolicy?.enabled} className="cancel-group">
-              {CANCEL_MODES.map(m => (
-                <label key={m.id}>
-                  <input
-                    type="radio"
-                    name="cancel_mode"
-                    checked={cancelPolicy?.mode === m.id}
-                    onChange={() => onCancelPolicyChange?.(m.id)}
-                  />
-                  {m.label}
-                </label>
+                  {/* список ВСТАВЛЯЕМ ПРЯМО ПОД afterSelected */}
+                  {r.id === 'afterSelected' && showStartPicker && (
+                    <div className="deps-inline">
+                      {deps.length === 0 ? (
+                        <div className="muted">Нет входящих связей</div>
+                      ) : (
+                        deps.map(d => (
+                          <label key={d.edgeId}>
+                            <input
+                              type="checkbox"
+                              checked={selectedDeps.includes(d.edgeId)}
+                              onChange={e => onToggleDep?.(d.edgeId, e.target.checked)}
+                            />
+                            {d.label}
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
               ))}
-            </fieldset>
-          </div>
+            </div>
+          </section>
+
+          {/* ── Отмена ── */}
+          <section className="rule-section">
+            <div className="rule-title">Политика отмены:</div>
+
+            <div className="rule-options">
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  checked={!!cancelPolicy?.enabled}
+                  onChange={e => onCancelPolicyToggle?.(e.target.checked)}
+                />
+                Включить
+              </label>
+
+              <fieldset disabled={!cancelPolicy?.enabled} className="cancel-group">
+                {CANCEL_MODES.map(m => (
+                  <div key={m.id}>
+                    <label>
+                      <input
+                        type="radio"
+                        name="cancel_mode"
+                        checked={cancelPolicy?.mode === m.id}
+                        onChange={() => onCancelPolicyChange?.(m.id)}
+                      />
+                      {m.label}
+                    </label>
+
+                    {/* список ВСТАВЛЯЕМ ПРЯМО ПОД anySelectedCanceled */}
+                    {m.id === 'anySelectedCanceled' && showCancelPicker && (
+                      <div className="deps-inline">
+                        {deps.length === 0 ? (
+                          <div className="muted">Нет входящих связей</div>
+                        ) : (
+                          deps.map(d => (
+                            <label key={d.edgeId}>
+                              <input
+                                type="checkbox"
+                                checked={cancelSelectedDeps.includes(d.edgeId)}
+                                onChange={e => onToggleCancelDep?.(d.edgeId, e.target.checked)}
+                              />
+                              {d.label}
+                            </label>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </fieldset>
+            </div>
+          </section>
 
           <hr />
           <div className="rule-actions">
-            <button onClick={onCancel}>❌ Отмена</button>
-            <button onClick={onFreeze}>❄️ Заморозить</button>
+            <button type="button" onClick={onCancel}>❌ Отмена</button>
+            <button type="button" onClick={onFreeze}>❄️ Заморозить</button>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

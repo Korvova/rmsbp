@@ -10,8 +10,12 @@ export default function CardNode({ id, data }) {
     done,
     rule,
     status = 'pending',
-     cancelPolicy,                 // {enabled, mode}
-      onCancelPolicyToggle, onCancelPolicyChange,
+
+    cancelPolicy,
+    selectedDeps = [],
+    cancelSelectedDeps = [],
+    deps = [],
+
     onTitle,
     onColor,
     onToggle,
@@ -19,6 +23,10 @@ export default function CardNode({ id, data }) {
     onRuleChange,
     onCancel,
     onFreeze,
+    onCancelPolicyToggle,
+    onCancelPolicyChange,
+    onToggleDep,          // (nodeId, edgeId, checked)
+    onToggleCancelDep,    // (nodeId, edgeId, checked)
   } = data;
 
   const cardColor = {
@@ -39,11 +47,16 @@ export default function CardNode({ id, data }) {
           value={rule}
           onChange={val => onRuleChange?.(id, val)}
 
-         cancelPolicy={cancelPolicy}
-         onCancelPolicyToggle={enabled => onCancelPolicyToggle?.(id, enabled)}
-         onCancelPolicyChange={mode => onCancelPolicyChange?.(id, mode)}
+          cancelPolicy={cancelPolicy}
+          onCancelPolicyToggle={enabled => onCancelPolicyToggle?.(id, enabled)}
+          onCancelPolicyChange={mode => onCancelPolicyChange?.(id, mode)}
 
+          deps={deps}
+          selectedDeps={selectedDeps}
+          onToggleDep={(edgeId, checked) => onToggleDep?.(id, edgeId, checked)}
 
+          cancelSelectedDeps={cancelSelectedDeps}
+          onToggleCancelDep={(edgeId, checked) => onToggleCancelDep?.(id, edgeId, checked)}
 
           onCancel={() => onCancel?.(id)}
           onFreeze={() => onFreeze?.(id)}
@@ -56,10 +69,7 @@ export default function CardNode({ id, data }) {
         onChange={e => onTitle?.(id, e.target.value)}
       />
 
-      <StatusToggle
-        checked={done}
-        onChange={val => onToggle?.(id, val)}
-      />
+      <StatusToggle checked={done} onChange={val => onToggle?.(id, val)} />
 
       <input
         type="color"
