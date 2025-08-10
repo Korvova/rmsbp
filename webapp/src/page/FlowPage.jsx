@@ -20,6 +20,9 @@ import Toolbar       from '../companet/Toolbar';
 import DeletableEdge from '../companet/DeletableEdge';
 import QuickMenu     from '../companet/QuickMenu';
 
+
+
+
 const NODE_TYPES = { card: CardNode };
 const EDGE_TYPES = { deletable: DeletableEdge };
 
@@ -41,6 +44,16 @@ function Canvas() {
 
   // ↓ НОВОЕ: подавляем клик, который приходит сразу после mouseup
 const suppressClickRef = useRef(false);
+
+const cloneDragRef = useRef({
+  active: false,
+  nodeId: null,
+  startPos: null,
+  placeholderId: null,
+});
+
+
+
 
   const [quickMenu, setQuickMenu] = useState({ show: false, x: 0, y: 0 });
   const [draft, setDraft]         = useState(initialDraft);
@@ -128,6 +141,35 @@ const suppressClickRef = useRef(false);
     setEdges(e);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+
+
+
+
+
+useEffect(() => {
+  const apply = () => wrapperRef.current?.classList.add('rf-copy-cursor');
+  const remove = () => wrapperRef.current?.classList.remove('rf-copy-cursor');
+
+  const onKeyDown = (e) => { if (e.ctrlKey || e.metaKey) apply(); };
+  const onKeyUp   = (e) => { if (!e.ctrlKey && !e.metaKey) remove(); };
+  const onBlur    = remove;
+
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  window.addEventListener('blur', onBlur);
+  return () => {
+    window.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('keyup', onKeyUp);
+    window.removeEventListener('blur', onBlur);
+  };
+}, []);
+
+
+
+
+
+
 
   // стили рёбер по правилам/политике
   const edgeStyleForRule = (rule) => {
@@ -366,9 +408,151 @@ const onConnectEnd = useCallback((ev) => {
 }, [composing, draft, rf, makeNode]);
 
 
+
+
+
+
+// Ctrl + drag = копировать ноду
+const onNodeCtrlDragStart = useCallback((event, node) => {
+  const isCtrl = event.ctrlKey || event.metaKey;
+
+  // обычный драг — выходим и убираем курсор, если вдруг остался
+  if (!isCtrl) {
+    wrapperRef.current?.classList.remove('rf-copy-cursor');
+    cloneDragRef.current = { active:false, nodeId:null, startPos:null, placeholderId:null };
+    return;
+  }
+
+  // уже в процессе копирования? игнорим повторные dragStart (при мультивыборе RF дергает на каждую ноду)
+  if (cloneDragRef.current.active) return;
+
+  const startPos = { ...node.position };
+  cloneDragRef.current = {
+    active: true,
+    nodeId: node.id,
+    startPos,
+    placeholderId: null,
+  };
+
+  // ДЕЛАЕМ ОДИНОЧНЫЙ ВЫБОР — только текущий узел
+  setNodes(ns => ns.map(n => ({
+    ...n,
+    selected: n.id === node.id
+  })));
+
+  // Создаём placeholder на месте исходника
+  setNodes(ns => {
+    const src = ns.find(n => n.id === node.id);
+    if (!src) return ns;
+    const ghostId = `ghost-${node.id}-${Date.now()}`;
+    cloneDragRef.current.placeholderId = ghostId;
+
+    const placeholder = {
+      id: ghostId,
+      type: src.type,
+      position: startPos,
+      data: { ...src.data, isPlaceholder: true },
+      draggable: false,
+      selectable: false,
+      style: { opacity: 0.45, pointerEvents: 'none' },
+    };
+
+    return [...ns, placeholder];
+  });
+
+  wrapperRef.current?.classList.add('rf-copy-cursor');
+}, [setNodes]);
+
+
+
+
+
+
+
+
+
+
+
+
+const onNodeCtrlDragStop = useCallback((event, node) => {
+  const ref = cloneDragRef.current;
+
+  // не копируем — просто сброс визуала
+  if (!ref.active || node.id !== ref.nodeId) {
+    wrapperRef.current?.classList.remove('rf-copy-cursor');
+    cloneDragRef.current = { active:false, nodeId:null, startPos:null, placeholderId:null };
+    return;
+  }
+
+  // исходник
+  const src = nodes.find(n => n.id === ref.nodeId);
+  if (!src) {
+    // уборка призраков «на всякий»
+    setNodes(ns => ns.filter(n => !String(n.id).startsWith('ghost-')));
+    wrapperRef.current?.classList.remove('rf-copy-cursor');
+    cloneDragRef.current = { active:false, nodeId:null, startPos:null, placeholderId:null };
+    return;
+  }
+
+  // куда бросили
+  const droppedPos = { ...node.position };
+  const newId = crypto.randomUUID();
+
+  const raw = {
+    id: newId,
+    type: src.type,
+    position: droppedPos,
+    data: {
+      label: src.data.label,
+      color: src.data.color,
+      done: src.data.done,
+      rule: src.data.rule,
+      status: src.data.status,
+      cancelPolicy: src.data.cancelPolicy,
+      selectedDeps: src.data.selectedDeps || [],
+      cancelSelectedDeps: src.data.cancelSelectedDeps || [],
+      overdue: !!src.data.overdue,
+      initials: src.data.initials || '',
+      avatarUrl: src.data.avatarUrl || '',
+      difficulty: typeof src.data.difficulty === 'number' ? src.data.difficulty : 0,
+      taskType: src.data.taskType || '',
+      description: src.data.description || '',
+    },
+  };
+
+  setNodes(ns => {
+    // 1) убираем ЛЮБЫЕ призраки на всякий (если вдруг осталось из-за мультистарта)
+    const noGhosts = ns.filter(n => !String(n.id).startsWith('ghost-'));
+
+    // 2) возвращаем оригинал на стартовую позицию
+    const originalBack = noGhosts.map(n =>
+      n.id === src.id ? { ...n, position: ref.startPos } : n
+    );
+
+    // 3) снимаем выделение со всех и добавляем копию выделенной
+    const cleared = originalBack.map(n => ({ ...n, selected: false }));
+    const withCopy = [...cleared, makeNode(raw)];
+    return withCopy.map(n => n.id === newId ? { ...n, selected: true } : n);
+  });
+
+  // финальный сброс
+  wrapperRef.current?.classList.remove('rf-copy-cursor');
+  cloneDragRef.current = { active:false, nodeId:null, startPos:null, placeholderId:null };
+}, [nodes, setNodes, makeNode]);
+
+
+
+
+
+
+
+
+
+
+
+
+
   // клик по пустому месту — создать карточку
-
-
 
   const onPaneClick = useCallback((ev) => {
   if (!composing) return;
@@ -527,7 +711,10 @@ const onConnectEnd = useCallback((ev) => {
           deleteKeyCode={['Delete','Backspace']}
           defaultEdgeOptions={baseEdge}
           fitView
-           panOnDrag={!composing}   // ← добавили
+          panOnDrag={!composing}   // ← добавили
+
+          onNodeDragStart={onNodeCtrlDragStart}
+          onNodeDragStop={onNodeCtrlDragStop}
 
           selectionOnDrag={composing ? false : true}
           nodesDraggable={composing ? false : true}

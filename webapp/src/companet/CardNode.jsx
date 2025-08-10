@@ -32,7 +32,22 @@ export default function CardNode({ id, data }) {
   }[status];
 
   return (
-    <div className="card" style={{ background: cardColor }}>
+
+
+
+   <div
+  className="card"
+  style={{
+    background: cardColor,
+    opacity: data.isPlaceholder ? 0.45 : 1,
+    pointerEvents: data.isPlaceholder ? 'none' : 'auto',
+  }}
+>
+
+
+
+
+
       <input className="title" value={label} onChange={e => onTitle?.(id, e.target.value)} />
 
       <div className="meta-row">
@@ -54,7 +69,7 @@ export default function CardNode({ id, data }) {
         <button title="Описание" onClick={() => setDescOpen(true)}>📋</button>
         <button title="Уведомления">🔔</button>
         <button title="Комментарий">💬</button>
-            <button title="Дедлайн">📅</button>
+            <button title="Дедлайн">🚩</button>
 
         <RuleMenu
           value={rule}

@@ -6,3 +6,12 @@ html, body, #root {
 }
 
 .rf-draft-cursor .react-flow__pane { cursor: copy !important; }
+
+
+
+
+/* Курсор copy при Ctrl на всём полотне */
+.rf-copy-cursor,
+.rf-copy-cursor .react-flow__pane {
+  cursor: copy !important;
+}
