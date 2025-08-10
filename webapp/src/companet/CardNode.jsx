@@ -5,6 +5,7 @@ import RuleMenu from './RuleMenu';
 import DescriptionModal from './DescriptionModal';
 import './card.css';
 import './flame.css';
+import iconUrl from '../assets/icon.jpg';
 
 export default function CardNode({ id, data }) {
   const {
@@ -16,9 +17,18 @@ export default function CardNode({ id, data }) {
     onCancelPolicyToggle, onCancelPolicyChange,
     deps, selectedDeps, onToggleDep,
     cancelPolicy, cancelSelectedDeps, onToggleCancelDep,
+
+
+
+
     onDescription,
     overdue = false,          // ⬅️ добавили
     onOverdue,                // ⬅️ добавили (коллбэк из Canvas)
+
+   showIcon = false,
+   onShowIcon,
+
+
   } = data;
 
   const [descOpen, setDescOpen]   = useState(false);
@@ -45,6 +55,12 @@ export default function CardNode({ id, data }) {
         pointerEvents: data.isPlaceholder ? 'none' : 'auto',
       }}
     >
+
+
+
+   {showIcon && !data.isPlaceholder && (
+  <img className="card-icon" src={iconUrl} alt="" />
+ )}
 
 
 {overdue && !data.isPlaceholder && (
@@ -101,7 +117,9 @@ export default function CardNode({ id, data }) {
           onFreeze={() => onFreeze?.(id)}
 
   overdue={overdue}
- onOverdueChange={(val) => onOverdue?.(id, val)}
+          onOverdueChange={(val) => onOverdue?.(id, val)}
+         showIcon={showIcon}
+         onShowIconChange={(val) => onShowIcon?.(id, val)}
 
           renderTrigger={({ toggle }) => (
             <>

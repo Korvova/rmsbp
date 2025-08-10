@@ -119,3 +119,17 @@
 .desc-popover, .desc-popover * { box-sizing: border-box; }
 .modal-body { padding: 12px 14px; overflow: hidden; }
 .modal-body textarea { width: 100%; max-width: 100%; display: block; box-sizing: border-box; }
+
+
+/* иконка над карточкой */
+.card-icon{
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: -100px;       /* при необходимости подстрой высоту отступа */
+  width: 100px;
+  height: auto;
+  pointer-events: none;  /* не мешает драгам и кликам */
+  user-select: none;
+  z-index: 1;
+}

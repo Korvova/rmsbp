@@ -25,6 +25,7 @@ export default function RuleMenu({
   selectedDeps = [], onToggleDep,
   cancelSelectedDeps = [], onToggleCancelDep,
   overdue, onOverdueChange,
+   showIcon, onShowIconChange,
   onCancel, onFreeze,
 }) {
   const [open, setOpen] = useState(false);
@@ -135,12 +136,32 @@ export default function RuleMenu({
           </section>
 
           <hr />
-          <div className="rule-actions" style={{ justifyContent:'space-between', alignItems:'center' }}>
-            <OverdueToggle checked={overdue} onChange={onOverdueChange} />
-            <div style={{ display:'flex', gap:6 }}>
+
+
+
+         <div className="rule-actions" style={{ justifyContent:'space-between', alignItems:'center' }}>
+           <div style={{ display:'flex', gap:12, alignItems:'center' }}>
+             <OverdueToggle checked={overdue} onChange={onOverdueChange} />
+             <label className="toggle" title="Показать иконку над карточкой">
+               <input
+                 type="checkbox"
+                 checked={!!showIcon}
+                 onChange={(e) => onShowIconChange?.(e.target.checked)}
+               />
+               Иконка
+             </label>
+           </div>
+           <div style={{ display:'flex', gap:6 }}>
+
+
+
+
               <button type="button" onClick={onCancel}>❌ Отмена</button>
               <button type="button" onClick={onFreeze}>❄️ Заморозить</button>
             </div>
+
+
+
           </div>
         </div> 
       ) : null}

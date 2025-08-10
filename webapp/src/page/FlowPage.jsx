@@ -69,6 +69,7 @@ function Canvas() {
         overdue: false,
         initials: '', avatarUrl: '',
         difficulty: 0, taskType: '', description: '',
+        showIcon: false,  // ← дефолт
         group: '',
         ...raw.data,
 
@@ -80,6 +81,13 @@ function Canvas() {
           setNodes(ns => ns.map(n =>
             n.id === id ? { ...n, data:{ ...n.data, done:val, status: val ? 'done' : n.data.status } } : n
           )),
+
+     onShowIcon: (id, val) =>
+       setNodes(ns => ns.map(n =>
+         n.id === id ? { ...n, data:{ ...n.data, showIcon: !!val } } : n
+       )),
+
+
 
         onCancel: (id) =>
           setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, status:'cancel' } } : n)),
@@ -295,6 +303,7 @@ function Canvas() {
         status: 'pending',
         initials: '', avatarUrl: '',
         difficulty: 0, taskType: '', description: '',
+         showIcon: false,
         group: '',
       },
     };
@@ -461,6 +470,7 @@ function Canvas() {
         taskType: src.data.taskType || '',
         description: src.data.description || '',
         group: src.data.group || '',
+        showIcon: !!src.data.showIcon,
       },
     };
 
@@ -509,6 +519,7 @@ function Canvas() {
         cancelPolicy:{ enabled:false, mode:'none' },
         selectedDeps:[], cancelSelectedDeps:[], overdue:false,
         status:'pending', initials, avatarUrl:'', difficulty, taskType,
+        showIcon: false,
         group,
       },
     };
@@ -568,6 +579,7 @@ function Canvas() {
         taskType: data.taskType || '',
         description: data.description || '',
         group: data.group || '',
+        showIcon: !!data.showIcon,
       },
     }));
     saveFlow({ nodes: plain, edges });
