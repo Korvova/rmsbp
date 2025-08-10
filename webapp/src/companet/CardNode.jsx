@@ -4,21 +4,23 @@ import StatusToggle from './StatusToggle';
 import RuleMenu from './RuleMenu';
 import DescriptionModal from './DescriptionModal';
 import './card.css';
+import './flame.css';
 
 export default function CardNode({ id, data }) {
   const {
     label, color, done, rule, status = 'pending',
-    initials, avatarUrl, difficulty, taskType,
+    initials, avatarUrl, difficulty, taskType, group,
     description = '',
     onTitle, onToggle, onDelete, onRuleChange,
     onCancel, onFreeze,
     onCancelPolicyToggle, onCancelPolicyChange,
     deps, selectedDeps, onToggleDep,
     cancelPolicy, cancelSelectedDeps, onToggleCancelDep,
-    onDescription, // сохраняем описание
+    onDescription,
+    overdue = false,          // ⬅️ добавили
+    onOverdue,                // ⬅️ добавили (коллбэк из Canvas)
   } = data;
 
-  // Локальный стейт для модалки
   const [descOpen, setDescOpen]   = useState(false);
   const [descDraft, setDescDraft] = useState(description || '');
   useEffect(() => setDescDraft(description || ''), [description]);
@@ -35,16 +37,26 @@ export default function CardNode({ id, data }) {
 
 
 
-   <div
-  className="card"
-  style={{
-    background: cardColor,
-    opacity: data.isPlaceholder ? 0.45 : 1,
-    pointerEvents: data.isPlaceholder ? 'none' : 'auto',
-  }}
->
+    <div
+      className="card"
+      style={{
+        background: cardColor,
+        opacity: data.isPlaceholder ? 0.45 : 1,
+        pointerEvents: data.isPlaceholder ? 'none' : 'auto',
+      }}
+    >
 
 
+{overdue && !data.isPlaceholder && (
+  <div className="flame-wrap" title="Просрочено">
+    <div className="flame-container">
+      <div className="flame flame-red" />
+      <div className="flame flame-orange" />
+      <div className="flame flame-yellow" />
+      <div className="flame flame-white" />
+    </div>
+  </div>
+)}
 
 
 
@@ -57,7 +69,10 @@ export default function CardNode({ id, data }) {
         )}
       </div>
 
-      <div className="type-pill">{taskType || 'Без типа'}</div>
+      <div className="meta-tags">
+        <span className="type-pill">{taskType || 'Без типа'}</span>
+        <span className="group-pill">{group || 'Без группы'}</span>
+      </div>
 
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
@@ -69,7 +84,7 @@ export default function CardNode({ id, data }) {
         <button title="Описание" onClick={() => setDescOpen(true)}>📋</button>
         <button title="Уведомления">🔔</button>
         <button title="Комментарий">💬</button>
-            <button title="Дедлайн">🚩</button>
+        <button title="Дедлайн">🚩</button>
 
         <RuleMenu
           value={rule}
@@ -84,6 +99,10 @@ export default function CardNode({ id, data }) {
           onToggleCancelDep={(edgeId, checked) => onToggleCancelDep?.(id, edgeId, checked)}
           onCancel={() => onCancel?.(id)}
           onFreeze={() => onFreeze?.(id)}
+
+  overdue={overdue}
+ onOverdueChange={(val) => onOverdue?.(id, val)}
+
           renderTrigger={({ toggle }) => (
             <>
               <button title="Условия" onClick={toggle}>🔀</button>
@@ -93,7 +112,6 @@ export default function CardNode({ id, data }) {
         />
       </NodeToolbar>
 
-      {/* Модалка описания */}
       <DescriptionModal
         open={descOpen}
         value={descDraft}

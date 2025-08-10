@@ -3,25 +3,21 @@
   position: absolute;
   z-index: 1000;
   transform: translate(-50%, -50%);
- /* pointer-events: none; */
+  /* pointer-events: none; */
 
-  /* зазор между колонками справа */
   --qm-xgap: 10px;
 
-  /* дефолты ширин (можно править ниже в "КОНФИГ") */
   --qm-w-default:    150px;
   --qm-w-title:      240px;  /* level-1 */
   --qm-w-conditions: 150px;  /* level-2 */
   --qm-w-assignee:   200px;  /* level-3 */
-  --qm-w-difficulty: 20px;  /* level-4 (узкий) */
+  --qm-w-difficulty: 20px;   /* level-4 (узкий) */
   --qm-w-type:       100px;  /* level-5 (узкий) */
 }
 
-
 .quickmenu, .quickmenu * { cursor: copy; }
 
-
-/* Сводка выбранных значений */
+/* Сводка */
 .quickmenu-summary{
   pointer-events: auto;
   background: rgba(0,0,0,.6);
@@ -34,15 +30,12 @@
   display: block;
 }
 .quickmenu-summary li{
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin: 2px 0;
+  display: flex; align-items: baseline; gap: 6px; margin: 2px 0;
 }
 .sm-label{ opacity:.75; }
 .sm-value{ font-weight:600; }
 
-/* Корневой блок ярлыков */
+/* Корень */
 .quickmenu-inner {
   pointer-events: auto;
   background: rgba(0,0,0,.85);
@@ -56,7 +49,7 @@
   line-height: 1;
 }
 
-/* Кнопки ярлыков */
+/* Кнопки */
 .quickmenu-item {
   position: relative;
   background: rgba(255,255,255,.08);
@@ -69,11 +62,9 @@
 .quickmenu-item.is-active   { background: rgba(33,150,243,.85); }
 .quickmenu-item.is-picked   { background: rgba(76,175,80,.55); color:#eaffea; }
 .quickmenu-item.is-cancelled{ background: rgba(244,67,54,.75); color:#fff; }
-
-/* немного нижнего поля для «мостика» */
 .quickmenu-item.has-sub { padding-bottom: 12px; }
 
-/* ===== Подменю (уровни) ===== */
+/* Подменю */
 .quickmenu-sub {
   position: absolute;
   background: #222;
@@ -85,28 +76,15 @@
   box-shadow: 0 8px 20px rgba(0,0,0,.35);
 }
 
-/* level-1 — ПОД пунктом */
-.quickmenu-sub.level-1 {
-  top: 100%;
-  left: 0;
+/* обычный дропдаун под каждой кнопкой */
+.quickmenu-sub.dropdown {
+  top: 100% !important;
+  left: 0 !important;
   z-index: 1000;
-  padding-right: 24px; /* место под столбец "→" */
+  padding-right: 8px;
 }
 
-/* уровни > 1 — СПРАВА от предыдущего */
-.quickmenu-sub.level-2,
-.quickmenu-sub.level-3,
-.quickmenu-sub.level-4,
-.quickmenu-sub.level-5 {
-  top: 0;
-  left: calc(100% + var(--qm-xgap, 10px));
-}
-.quickmenu-sub.level-2 { z-index: 1001; padding-right: 24px; }
-.quickmenu-sub.level-3 { z-index: 1002; padding-right: 24px; }
-.quickmenu-sub.level-4 { z-index: 1003; }
-.quickmenu-sub.level-5 { z-index: 1004; }
-
-/* Списки внутри подменю */
+/* список */
 .qm-col-list{
   min-width: var(--qm-w-default, 260px);
   max-height: 240px;
@@ -115,39 +93,27 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-
-  /* фикс перекрытия текстов полосой прокрутки */
-  scrollbar-gutter: stable both-edges;  /* резервирует место */
-  padding-right: 10px;                  /* небольшой отступ под скролл */
+  scrollbar-gutter: stable both-edges;
+  padding-right: 10px;
 }
+.qm-col-list.narrow { min-width: calc(var(--qm-w-difficulty) - 20px); max-height: 220px; }
 
-
-
-
-
+/* item */
 .quickmenu-subitem{
   padding: 6px 8px;
   border-radius: 6px;
   cursor: default;
-
-  /* чтобы длинные названия не «резались» */
   white-space: normal;
   word-break: break-word;
   line-height: 1.25;
 }
-
-
-
-
-
-
 .quickmenu-subitem:hover,
 .quickmenu-subitem.is-picked {
   background: rgba(76,175,80,.55);
   color: #eaffea;
 }
 
-/* футер списков */
+/* футер */
 .quickmenu-sep { height: 6px; }
 .quickmenu-subfoot {
   display: flex;
@@ -167,48 +133,12 @@
 .qm-link.danger { color:#ffc5c5; border-color: rgba(255,0,0,.25); }
 .qm-foot-spacer { flex: 1; }
 
-/* «мостик» для стабильного наведения вправо */
+/* “мостик” (не используется в дропдаунах, оставил на будущее) */
 .qm-next-col {
   position: absolute;
-  top: 0;
-  right: -22px;
-  width: 22px;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #bbb;
-  font-weight: 700;
-  user-select: none;
+  top: 0; right: -22px;
+  width: 22px; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  color: #bbb; font-weight: 700; user-select: none;
 }
-.qm-next-col:hover {
-  background: rgba(255,255,255,.08);
-  border-radius: 6px;
-  color: #fff;
-}
-
-/* Узкие панели (сложность/тип) */
-.quickmenu-sub.narrow       { min-width: var(--qm-w-difficulty); padding: 6px; }
-.qm-col-list.narrow         { min-width: calc(var(--qm-w-difficulty) - 20px); max-height: 220px; }
-
-/* ====== КОНФИГ ШИРИН ПАНЕЛЕЙ (правь цифры тут) ====== */
-
-/* Название */
-.quickmenu-sub.level-1 .qm-col-list{ min-width: var(--qm-w-title); }
-/* Условия */
-.quickmenu-sub.level-2 .qm-col-list{ min-width: var(--qm-w-conditions); }
-/* Исполнитель */
-.quickmenu-sub.level-3 .qm-col-list{ min-width: var(--qm-w-assignee); }
-/* Сложность */
-.quickmenu-sub.level-4 .qm-col-list{ min-width: var(--qm-w-difficulty); }
-/* Тип */
-.quickmenu-sub.level-5 .qm-col-list{ min-width: var(--qm-w-type); }
-
-
-/* Режим обычных дропдаунов под каждой кнопкой */
-.quickmenu-sub.dropdown {
-  top: 100% !important;
-  left: 0 !important;
-  z-index: 1000;
-  padding-right: 8px;
-}
+.qm-next-col:hover { background: rgba(255,255,255,.08); border-radius: 6px; color: #fff; }

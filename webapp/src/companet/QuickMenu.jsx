@@ -1,5 +1,4 @@
-// src/companet/QuickMenu.jsx
-import { useRef, useState, useMemo, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import './quickmenu.css';
 
 const BASE_TITLES = [
@@ -36,17 +35,18 @@ const EXTRA_ASSIGNEES = ['Мария','Алексей','Жанна','Павел'
 
 const DIFFICULTY = Array.from({ length: 10 }, (_, i) => String(i + 1));
 const TYPES      = ['Отчёт', 'рисеч', 'кодинг', 'ТЗ', 'встреча', 'преза', 'анализ', 'КП'];
+const GROUPS     = ['Без группы','Core','Frontend','Backend','DevOps','Design','QA','Research'];
 
 export default function QuickMenu({ x, y, onDraftChange }) {
-  // не даём клику «пробиваться» до React Flow
   const stopAll = (e) => { e.stopPropagation(); e.preventDefault(); };
 
-  // раскрытые дропдауны (эксклюзивно — один открыт)
-  const [open, setOpen] = useState({ title:false, conditions:false, assignee:false, difficulty:false, type:false });
+  const [open, setOpen] = useState({
+    title:false, conditions:false, assignee:false, difficulty:false, type:false, group:false
+  });
   const toggleOnly = (key) => () =>
     setOpen(o => {
       const isOpen = !!o[key];
-      return { title:false, conditions:false, assignee:false, difficulty:false, type:false, [key]: !isOpen };
+      return { title:false, conditions:false, assignee:false, difficulty:false, type:false, group:false, [key]: !isOpen };
     });
 
   // ===== Название =====
@@ -83,6 +83,9 @@ export default function QuickMenu({ x, y, onDraftChange }) {
   // ===== Тип =====
   const [pickedType, setPickedType] = useState(null);
 
+  // ===== Группа =====
+  const [pickedGroup, setPickedGroup] = useState('');
+
   // summary наверх
   useEffect(() => {
     onDraftChange?.({
@@ -92,10 +95,10 @@ export default function QuickMenu({ x, y, onDraftChange }) {
       assignee: pickedAss || null,
       difficulty: pickedDiff || null,
       type: pickedType || null,
+      group: pickedGroup ?? '',
     });
-  }, [pickedTitle, pickedCond, pickedAss, pickedDiff, pickedType, onDraftChange]);
+  }, [pickedTitle, pickedCond, pickedAss, pickedDiff, pickedType, pickedGroup, onDraftChange]);
 
-  // классы для ярлыков
   const itemClass = (key, picked) =>
     [
       'quickmenu-item',
@@ -118,6 +121,7 @@ export default function QuickMenu({ x, y, onDraftChange }) {
         <li><span className="sm-label">Исполнитель:</span>  <strong className="sm-value">{pickedAss   || '—'}</strong></li>
         <li><span className="sm-label">Сложность:</span>    <strong className="sm-value">{pickedDiff  || '—'}</strong></li>
         <li><span className="sm-label">Тип:</span>          <strong className="sm-value">{pickedType  || '—'}</strong></li>
+        <li><span className="sm-label">Группа:</span>       <strong className="sm-value">{pickedGroup || 'Без группы'}</strong></li>
       </ul>
 
       <div className="quickmenu-inner">
@@ -240,6 +244,31 @@ export default function QuickMenu({ x, y, onDraftChange }) {
                 <div className="quickmenu-subfoot">
                   <span className="qm-foot-spacer" />
                   <button className="qm-link danger" onClick={() => setPickedType(null)}>❌ Отмена</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ===== Группа ===== */}
+        <div className={itemClass('group', pickedGroup !== '')} onClick={toggleOnly('group')}>
+          Группа
+          {open.group && (
+            <div className="quickmenu-sub dropdown level-6" onClick={stopAll}>
+              <div className="qm-col-list">
+                {GROUPS.map(g => (
+                  <div
+                    key={g}
+                    className={'quickmenu-subitem ' + ((pickedGroup === '' && g === 'Без группы') || pickedGroup === g ? 'is-picked' : '')}
+                    onClick={() => setPickedGroup(g === 'Без группы' ? '' : g)}
+                  >
+                    {g}
+                  </div>
+                ))}
+                <div className="quickmenu-sep" />
+                <div className="quickmenu-subfoot">
+                  <span className="qm-foot-spacer" />
+                  <button className="qm-link danger" onClick={() => setPickedGroup('')}>❌ Сброс</button>
                 </div>
               </div>
             </div>

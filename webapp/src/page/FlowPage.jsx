@@ -1,4 +1,3 @@
-// src/page/FlowPage.jsx
 import {
   ReactFlowProvider,
   useReactFlow,
@@ -20,13 +19,13 @@ import Toolbar       from '../companet/Toolbar';
 import DeletableEdge from '../companet/DeletableEdge';
 import QuickMenu     from '../companet/QuickMenu';
 
-
-
-
 const NODE_TYPES = { card: CardNode };
 const EDGE_TYPES = { deletable: DeletableEdge };
 
-const initialDraft = { title:null, conditionId:'', conditionLabel:'', assignee:null, difficulty:null, type:null };
+const initialDraft = {
+  title:null, conditionId:'', conditionLabel:'',
+  assignee:null, difficulty:null, type:null, group:null
+};
 
 export default function FlowPage() {
   return (
@@ -42,18 +41,14 @@ function Canvas() {
   const wrapperRef    = useRef(null);
   const didConnectRef = useRef(false);
 
-  // ↓ НОВОЕ: подавляем клик, который приходит сразу после mouseup
-const suppressClickRef = useRef(false);
+  const suppressClickRef = useRef(false);
 
-const cloneDragRef = useRef({
-  active: false,
-  nodeId: null,
-  startPos: null,
-  placeholderId: null,
-});
-
-
-
+  const cloneDragRef = useRef({
+    active: false,
+    nodeId: null,
+    startPos: null,
+    placeholderId: null,
+  });
 
   const [quickMenu, setQuickMenu] = useState({ show: false, x: 0, y: 0 });
   const [draft, setDraft]         = useState(initialDraft);
@@ -74,6 +69,7 @@ const cloneDragRef = useRef({
         overdue: false,
         initials: '', avatarUrl: '',
         difficulty: 0, taskType: '', description: '',
+        group: '',
         ...raw.data,
 
         onTitle: (id, t) =>
@@ -142,34 +138,24 @@ const cloneDragRef = useRef({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // курсор copy при Ctrl/⌘
+  useEffect(() => {
+    const apply = () => wrapperRef.current?.classList.add('rf-copy-cursor');
+    const remove = () => wrapperRef.current?.classList.remove('rf-copy-cursor');
 
+    const onKeyDown = (e) => { if (e.ctrlKey || e.metaKey) apply(); };
+    const onKeyUp   = (e) => { if (!e.ctrlKey && !e.metaKey) remove(); };
+    const onBlur    = remove;
 
-
-
-
-useEffect(() => {
-  const apply = () => wrapperRef.current?.classList.add('rf-copy-cursor');
-  const remove = () => wrapperRef.current?.classList.remove('rf-copy-cursor');
-
-  const onKeyDown = (e) => { if (e.ctrlKey || e.metaKey) apply(); };
-  const onKeyUp   = (e) => { if (!e.ctrlKey && !e.metaKey) remove(); };
-  const onBlur    = remove;
-
-  window.addEventListener('keydown', onKeyDown);
-  window.addEventListener('keyup', onKeyUp);
-  window.addEventListener('blur', onBlur);
-  return () => {
-    window.removeEventListener('keydown', onKeyDown);
-    window.removeEventListener('keyup', onKeyUp);
-    window.removeEventListener('blur', onBlur);
-  };
-}, []);
-
-
-
-
-
-
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, []);
 
   // стили рёбер по правилам/политике
   const edgeStyleForRule = (rule) => {
@@ -246,7 +232,7 @@ useEffect(() => {
     });
   }, [nodes, edges]);
 
-  // авто "working" при afterAny
+  // авто working при afterAny
   useEffect(() => {
     setNodes(ns => {
       let changed = false;
@@ -309,29 +295,21 @@ useEffect(() => {
         status: 'pending',
         initials: '', avatarUrl: '',
         difficulty: 0, taskType: '', description: '',
+        group: '',
       },
     };
     setNodes(ns => [...ns, makeNode(raw)]);
   }, [makeNode]);
 
+  const onConnect = useCallback((params) => {
+    didConnectRef.current = true;
+    setEdges(es => addEdge({ ...params, ...baseEdge }, es));
 
-
-
-const onConnect = useCallback((params) => {
-  didConnectRef.current = true;
-  setEdges(es => addEdge({ ...params, ...baseEdge }, es));
-
-  // закрываем меню и выходим из режима набора
-  setQuickMenu(m => ({ ...m, show: false }));
-  setComposing(false);
-  connectRef.current = null;
-  if (wrapperRef.current) wrapperRef.current.style.cursor = '';
-}, [setEdges]);
-
-
-
-
-
+    setQuickMenu(m => ({ ...m, show: false }));
+    setComposing(false);
+    connectRef.current = null;
+    if (wrapperRef.current) wrapperRef.current.style.cursor = '';
+  }, [setEdges]);
 
   const onNodesDelete = useCallback(
     (deleted) => setEdges(es => es.filter(e => !deleted.some(d => e.source === d.id || e.target === d.id))),
@@ -350,283 +328,211 @@ const onConnect = useCallback((params) => {
     const MENU_OFFSET_Y = -150;
 
     setQuickMenu({ show: true, x: startX + MENU_OFFSET_X, y: startY + MENU_OFFSET_Y });
-    setComposing(true); // включили режим набора
+    setComposing(true);
   };
 
-// src/page/FlowPage.jsx — заменить onConnectEnd
-const onConnectEnd = useCallback((ev) => {
-  if (!composing || !wrapperRef.current || !connectRef.current) return;
+  const onConnectEnd = useCallback((ev) => {
+    if (!composing || !wrapperRef.current || !connectRef.current) return;
 
-  // Создаём ноду только если отпустили мышь на полотне
-  const isPane = ev?.target?.classList?.contains?.('react-flow__pane');
-  if (!isPane) return;
+    const isPane = ev?.target?.classList?.contains?.('react-flow__pane');
+    if (!isPane) return;
 
-  const bounds = wrapperRef.current.getBoundingClientRect();
-  const pos    = rf.project({ x: ev.clientX - bounds.left, y: ev.clientY - bounds.top });
+    const bounds = wrapperRef.current.getBoundingClientRect();
+    const pos    = rf.project({ x: ev.clientX - bounds.left, y: ev.clientY - bounds.top });
 
-  const label      = draft.title || 'Новая карточка';
-  const rule       = draft.conditionId || '';
-  const initials   = draft.assignee ? draft.assignee.split(' ').map(s => s[0]).join('').slice(0,2).toUpperCase() : '';
-  const difficulty = draft.difficulty ? Number(draft.difficulty) : 0;
-  const taskType   = draft.type || '';
+    const label      = draft.title || 'Новая карточка';
+    const rule       = draft.conditionId || '';
+    const initials   = draft.assignee ? draft.assignee.split(' ').map(s => s[0]).join('').slice(0,2).toUpperCase() : '';
+    const difficulty = draft.difficulty ? Number(draft.difficulty) : 0;
+    const taskType   = draft.type || '';
+    const group      = draft.group || '';
 
-  const newId = crypto.randomUUID();
-  const srcId = connectRef.current; // фиксируем источник до очистки
+    const newId = crypto.randomUUID();
+    const srcId = connectRef.current;
 
-  const raw = {
-    id: newId,
-    type: 'card',
-    position: pos,
-    data: {
-      label, color:'#eeebdd', rule,
-      cancelPolicy:{ enabled:false, mode:'none' },
-      selectedDeps:[], cancelSelectedDeps:[], overdue:false,
-      status:'pending', initials, avatarUrl:'', difficulty, taskType,
-    },
-  };
-
-  // 1) добавляем ноду
-  setNodes(ns => [...ns, makeNode(raw)]);
-
-  // 2) добавляем ребро после обновления стора
-  requestAnimationFrame(() => {
-    setEdges(es => [
-      ...es,
-      { id: crypto.randomUUID(), source: srcId, target: newId, ...baseEdge },
-    ]);
-  });
-
-  // 3) выходим из режима
-  setDraft(initialDraft);
-  setQuickMenu(m => ({ ...m, show:false }));
-  setComposing(false);
-  connectRef.current = null;
-
-  // 4) подавляем следующий клик ТОЛЬКО в этом сценарии,
-  //    чтобы не создать вторую карточку
-  suppressClickRef.current = true;
-}, [composing, draft, rf, makeNode]);
-
-
-
-
-
-
-// Ctrl + drag = копировать ноду
-const onNodeCtrlDragStart = useCallback((event, node) => {
-  const isCtrl = event.ctrlKey || event.metaKey;
-
-  // обычный драг — выходим и убираем курсор, если вдруг остался
-  if (!isCtrl) {
-    wrapperRef.current?.classList.remove('rf-copy-cursor');
-    cloneDragRef.current = { active:false, nodeId:null, startPos:null, placeholderId:null };
-    return;
-  }
-
-  // уже в процессе копирования? игнорим повторные dragStart (при мультивыборе RF дергает на каждую ноду)
-  if (cloneDragRef.current.active) return;
-
-  const startPos = { ...node.position };
-  cloneDragRef.current = {
-    active: true,
-    nodeId: node.id,
-    startPos,
-    placeholderId: null,
-  };
-
-  // ДЕЛАЕМ ОДИНОЧНЫЙ ВЫБОР — только текущий узел
-  setNodes(ns => ns.map(n => ({
-    ...n,
-    selected: n.id === node.id
-  })));
-
-  // Создаём placeholder на месте исходника
-  setNodes(ns => {
-    const src = ns.find(n => n.id === node.id);
-    if (!src) return ns;
-    const ghostId = `ghost-${node.id}-${Date.now()}`;
-    cloneDragRef.current.placeholderId = ghostId;
-
-    const placeholder = {
-      id: ghostId,
-      type: src.type,
-      position: startPos,
-      data: { ...src.data, isPlaceholder: true },
-      draggable: false,
-      selectable: false,
-      style: { opacity: 0.45, pointerEvents: 'none' },
+    const raw = {
+      id: newId,
+      type: 'card',
+      position: pos,
+      data: {
+        label, color:'#eeebdd', rule,
+        cancelPolicy:{ enabled:false, mode:'none' },
+        selectedDeps:[], cancelSelectedDeps:[], overdue:false,
+        status:'pending', initials, avatarUrl:'', difficulty, taskType,
+         group: draft.group || '',   // ⬅️ добавили
+      },
     };
 
-    return [...ns, placeholder];
-  });
+    setNodes(ns => [...ns, makeNode(raw)]);
 
-  wrapperRef.current?.classList.add('rf-copy-cursor');
-}, [setNodes]);
+    requestAnimationFrame(() => {
+      setEdges(es => [
+        ...es,
+        { id: crypto.randomUUID(), source: srcId, target: newId, ...baseEdge },
+      ]);
+    });
 
+    setDraft(initialDraft);
+    setQuickMenu(m => ({ ...m, show:false }));
+    setComposing(false);
+    connectRef.current = null;
+    suppressClickRef.current = true;
+  }, [composing, draft, rf, makeNode]);
 
+  // Ctrl + drag = копировать ноду (с placeholder)
+  const onNodeCtrlDragStart = useCallback((event, node) => {
+    const isCtrl = event.ctrlKey || event.metaKey;
+    if (!isCtrl) {
+      wrapperRef.current?.classList.remove('rf-copy-cursor');
+      cloneDragRef.current = { active:false, nodeId:null, startPos:null, placeholderId:null };
+      return;
+    }
+    if (cloneDragRef.current.active) return;
 
+    const startPos = { ...node.position };
+    cloneDragRef.current = {
+      active: true,
+      nodeId: node.id,
+      startPos,
+      placeholderId: null,
+    };
 
+    setNodes(ns => ns.map(n => ({ ...n, selected: n.id === node.id })));
 
+    setNodes(ns => {
+      const src = ns.find(n => n.id === node.id);
+      if (!src) return ns;
+      const ghostId = `ghost-${node.id}-${Date.now()}`;
+      cloneDragRef.current.placeholderId = ghostId;
 
+      const placeholder = {
+        id: ghostId,
+        type: src.type,
+        position: startPos,
+        data: { ...src.data, isPlaceholder: true },
+        draggable: false,
+        selectable: false,
+        style: { opacity: 0.45, pointerEvents: 'none' },
+      };
 
+      return [...ns, placeholder];
+    });
 
+    wrapperRef.current?.classList.add('rf-copy-cursor');
+  }, [setNodes]);
 
+  const onNodeCtrlDragStop = useCallback((event, node) => {
+    const ref = cloneDragRef.current;
 
+    if (!ref.active || node.id !== ref.nodeId) {
+      wrapperRef.current?.classList.remove('rf-copy-cursor');
+      cloneDragRef.current = { active:false, nodeId:null, startPos:null, placeholderId:null };
+      return;
+    }
 
+    const src = nodes.find(n => n.id === ref.nodeId);
+    if (!src) {
+      setNodes(ns => ns.filter(n => !String(n.id).startsWith('ghost-')));
+      wrapperRef.current?.classList.remove('rf-copy-cursor');
+      cloneDragRef.current = { active:false, nodeId:null, startPos:null, placeholderId:null };
+      return;
+    }
 
-const onNodeCtrlDragStop = useCallback((event, node) => {
-  const ref = cloneDragRef.current;
+    const droppedPos = { ...node.position };
+    const newId = crypto.randomUUID();
 
-  // не копируем — просто сброс визуала
-  if (!ref.active || node.id !== ref.nodeId) {
+    const raw = {
+      id: newId,
+      type: src.type,
+      position: droppedPos,
+      data: {
+        label: src.data.label,
+        color: src.data.color,
+        done: src.data.done,
+        rule: src.data.rule,
+        status: src.data.status,
+        cancelPolicy: src.data.cancelPolicy,
+        selectedDeps: src.data.selectedDeps || [],
+        cancelSelectedDeps: src.data.cancelSelectedDeps || [],
+        overdue: !!src.data.overdue,
+        initials: src.data.initials || '',
+        avatarUrl: src.data.avatarUrl || '',
+        difficulty: typeof src.data.difficulty === 'number' ? src.data.difficulty : 0,
+        taskType: src.data.taskType || '',
+        description: src.data.description || '',
+        group: src.data.group || '',
+      },
+    };
+
+    setNodes(ns => {
+      const noGhosts = ns.filter(n => !String(n.id).startsWith('ghost-'));
+      const originalBack = noGhosts.map(n =>
+        n.id === src.id ? { ...n, position: ref.startPos } : n
+      );
+      const cleared = originalBack.map(n => ({ ...n, selected: false }));
+      const withCopy = [...cleared, makeNode(raw)];
+      return withCopy.map(n => n.id === newId ? { ...n, selected: true } : n);
+    });
+
     wrapperRef.current?.classList.remove('rf-copy-cursor');
     cloneDragRef.current = { active:false, nodeId:null, startPos:null, placeholderId:null };
-    return;
-  }
-
-  // исходник
-  const src = nodes.find(n => n.id === ref.nodeId);
-  if (!src) {
-    // уборка призраков «на всякий»
-    setNodes(ns => ns.filter(n => !String(n.id).startsWith('ghost-')));
-    wrapperRef.current?.classList.remove('rf-copy-cursor');
-    cloneDragRef.current = { active:false, nodeId:null, startPos:null, placeholderId:null };
-    return;
-  }
-
-  // куда бросили
-  const droppedPos = { ...node.position };
-  const newId = crypto.randomUUID();
-
-  const raw = {
-    id: newId,
-    type: src.type,
-    position: droppedPos,
-    data: {
-      label: src.data.label,
-      color: src.data.color,
-      done: src.data.done,
-      rule: src.data.rule,
-      status: src.data.status,
-      cancelPolicy: src.data.cancelPolicy,
-      selectedDeps: src.data.selectedDeps || [],
-      cancelSelectedDeps: src.data.cancelSelectedDeps || [],
-      overdue: !!src.data.overdue,
-      initials: src.data.initials || '',
-      avatarUrl: src.data.avatarUrl || '',
-      difficulty: typeof src.data.difficulty === 'number' ? src.data.difficulty : 0,
-      taskType: src.data.taskType || '',
-      description: src.data.description || '',
-    },
-  };
-
-  setNodes(ns => {
-    // 1) убираем ЛЮБЫЕ призраки на всякий (если вдруг осталось из-за мультистарта)
-    const noGhosts = ns.filter(n => !String(n.id).startsWith('ghost-'));
-
-    // 2) возвращаем оригинал на стартовую позицию
-    const originalBack = noGhosts.map(n =>
-      n.id === src.id ? { ...n, position: ref.startPos } : n
-    );
-
-    // 3) снимаем выделение со всех и добавляем копию выделенной
-    const cleared = originalBack.map(n => ({ ...n, selected: false }));
-    const withCopy = [...cleared, makeNode(raw)];
-    return withCopy.map(n => n.id === newId ? { ...n, selected: true } : n);
-  });
-
-  // финальный сброс
-  wrapperRef.current?.classList.remove('rf-copy-cursor');
-  cloneDragRef.current = { active:false, nodeId:null, startPos:null, placeholderId:null };
-}, [nodes, setNodes, makeNode]);
-
-
-
-
-
-
-
-
-
-
-
-
+  }, [nodes, setNodes, makeNode]);
 
   // клик по пустому месту — создать карточку
-
   const onPaneClick = useCallback((ev) => {
-  if (!composing) return;
+    if (!composing) return;
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    if (!wrapperRef.current || !connectRef.current) return;
 
-  // если это "хвостовой" клик сразу после mouseup — пропускаем один раз
-  if (suppressClickRef.current) {
-    suppressClickRef.current = false;
-    return;
-  }
+    const bounds = wrapperRef.current.getBoundingClientRect();
+    const pos    = rf.project({ x: ev.clientX - bounds.left, y: ev.clientY - bounds.top });
 
-  if (!wrapperRef.current || !connectRef.current) return;
+    const label      = draft.title || 'Новая карточка';
+    const rule       = draft.conditionId || '';
+    const initials   = draft.assignee ? draft.assignee.split(' ').map(s => s[0]).join('').slice(0,2).toUpperCase() : '';
+    const difficulty = draft.difficulty ? Number(draft.difficulty) : 0;
+    const taskType   = draft.type || '';
+    const group      = draft.group || '';
 
-  const bounds = wrapperRef.current.getBoundingClientRect();
-  const pos    = rf.project({ x: ev.clientX - bounds.left, y: ev.clientY - bounds.top });
+    const newId = crypto.randomUUID();
+    const srcId = connectRef.current;
 
-  const label      = draft.title || 'Новая карточка';
-  const rule       = draft.conditionId || '';
-  const initials   = draft.assignee ? draft.assignee.split(' ').map(s => s[0]).join('').slice(0,2).toUpperCase() : '';
-  const difficulty = draft.difficulty ? Number(draft.difficulty) : 0;
-  const taskType   = draft.type || '';
-
-  const newId = crypto.randomUUID();
-  const srcId = connectRef.current;           // ← фиксируем ИД источника заранее!
-
-  const raw = {
-    id: newId,
-    type: 'card',
-    position: pos,
-    data: {
-      label, color:'#eeebdd', rule,
-      cancelPolicy:{ enabled:false, mode:'none' },
-      selectedDeps:[], cancelSelectedDeps:[], overdue:false,
-      status:'pending', initials, avatarUrl:'', difficulty, taskType,
-    },
-  };
-
-  // 1) сначала добавляем НОДУ
-  setNodes(ns => [...ns, makeNode(raw)]);
-
-  // 2) потом — РЕБРО, когда DOM/стор уже успел обновиться
-  requestAnimationFrame(() => {
-    setEdges(es => [
-      ...es,
-      {
-        id: crypto.randomUUID(),
-        source: srcId,
-        target: newId,
-        ...baseEdge,
+    const raw = {
+      id: newId,
+      type: 'card',
+      position: pos,
+      data: {
+        label, color:'#eeebdd', rule,
+        cancelPolicy:{ enabled:false, mode:'none' },
+        selectedDeps:[], cancelSelectedDeps:[], overdue:false,
+        status:'pending', initials, avatarUrl:'', difficulty, taskType,
+        group,
       },
-    ]);
-  });
+    };
 
-  // 3) выходим из режима
-  setDraft(initialDraft);
-  setQuickMenu(m => ({ ...m, show:false }));
-  setComposing(false);
-  connectRef.current = null;
-  if (wrapperRef.current) wrapperRef.current.style.cursor = '';
-}, [composing, draft, rf, makeNode]);
+    setNodes(ns => [...ns, makeNode(raw)]);
 
+    requestAnimationFrame(() => {
+      setEdges(es => [
+        ...es,
+        {
+          id: crypto.randomUUID(),
+          source: srcId,
+          target: newId,
+          ...baseEdge,
+        },
+      ]);
+    });
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+    setDraft(initialDraft);
+    setQuickMenu(m => ({ ...m, show:false }));
+    setComposing(false);
+    connectRef.current = null;
+    if (wrapperRef.current) wrapperRef.current.style.cursor = '';
+  }, [composing, draft, rf, makeNode]);
 
   // Esc — отмена режима
   useEffect(() => {
@@ -661,6 +567,7 @@ const onNodeCtrlDragStop = useCallback((event, node) => {
         difficulty: typeof data.difficulty === 'number' ? data.difficulty : 0,
         taskType: data.taskType || '',
         description: data.description || '',
+        group: data.group || '',
       },
     }));
     saveFlow({ nodes: plain, edges });
@@ -688,14 +595,11 @@ const onNodeCtrlDragStop = useCallback((event, node) => {
         }}
       />
 
-<div
-  ref={wrapperRef}
-  className={composing ? 'rf-draft-cursor' : ''}
-  style={{ width:'100%', height:'100vh' }}
->
-
-
-
+      <div
+        ref={wrapperRef}
+        className={composing ? 'rf-draft-cursor' : ''}
+        style={{ width:'100%', height:'100vh' }}
+      >
         <ReactFlow
           nodes={nodesView}
           edges={edges}
@@ -711,16 +615,13 @@ const onNodeCtrlDragStop = useCallback((event, node) => {
           deleteKeyCode={['Delete','Backspace']}
           defaultEdgeOptions={baseEdge}
           fitView
-          panOnDrag={!composing}   // ← добавили
+          panOnDrag={!composing}
 
           onNodeDragStart={onNodeCtrlDragStart}
           onNodeDragStop={onNodeCtrlDragStop}
 
           selectionOnDrag={composing ? false : true}
           nodesDraggable={composing ? false : true}
-
-
-
         >
           <Controls />
           <MiniMap nodeColor={n => n.data.status === 'working'
