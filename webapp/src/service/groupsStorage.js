@@ -1,5 +1,6 @@
 // src/service/groupsStorage.js
 const KEY = 'rf-groups-tree';
+const EVT = 'rf-groups-tree:changed';
 
 export function loadTree() {
   try {
@@ -14,11 +15,12 @@ export function loadTree() {
 
 export function saveTree(tree) {
   localStorage.setItem(KEY, JSON.stringify(tree));
+  // Сообщаем всем компонентам, что дерево изменилось
+  window.dispatchEvent(new Event(EVT));
   return tree;
 }
 
 // === CRUD ===
-
 export function createFolder(parentId = 'root', name = 'Новая папка') {
   const tree = loadTree();
   const parent = findNode(tree, parentId) ?? ensureRoot(tree);
@@ -31,12 +33,7 @@ export function createFolder(parentId = 'root', name = 'Новая папка') 
 export function createGroup(parentId = 'root', name = 'Новая группа') {
   const tree = loadTree();
   const parent = findNode(tree, parentId) ?? ensureRoot(tree);
-  const node = {
-    id: genId('grp'),
-    name,
-    type: 'group',
-    groupId: crypto.randomUUID(), // ← это ид, который использует /groups/:groupId
-  };
+  const node = { id: genId('grp'), name, type: 'group', groupId: crypto.randomUUID() };
   parent.children = parent.children || [];
   parent.children.push(node);
   return saveTree(tree);
@@ -62,14 +59,12 @@ export function moveNode(id, newParentId = 'root', index = 0) {
   const node = detachNode(tree, id);
   const parent = findNode(tree, newParentId) ?? ensureRoot(tree);
   parent.children = parent.children || [];
-  // нормализуем index
   const i = Math.max(0, Math.min(index, parent.children.length));
   parent.children.splice(i, 0, node);
   return saveTree(tree);
 }
 
 // === helpers ===
-
 function ensureRoot(tree) {
   let root = tree.find(n => n.id === 'root');
   if (!root) {
@@ -78,11 +73,7 @@ function ensureRoot(tree) {
   }
   return root;
 }
-
-function genId(prefix) {
-  return `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
+function genId(prefix) { return `${prefix}_${Math.random().toString(36).slice(2, 8)}`; }
 function findNode(tree, id) {
   const stack = [...tree];
   while (stack.length) {
@@ -92,89 +83,53 @@ function findNode(tree, id) {
   }
   return null;
 }
-
 function removeNode(tree, id) {
   const stack = [...tree];
   while (stack.length) {
     const n = stack.shift();
     if (!n.children) continue;
     const idx = n.children.findIndex(c => c.id === id);
-    if (idx !== -1) {
-      n.children.splice(idx, 1);
-      return true;
-    }
+    if (idx !== -1) { n.children.splice(idx, 1); return true; }
     stack.push(...n.children);
   }
   return false;
 }
-
-
-
-
-
-// Вернуть плоский список всех групп (для плиток / списка)
-export function listGroups() {
-  const tree = loadTree();
-  const root = ensureRoot(tree);
-
-  const out = [];
-
-  function walk(nodes, folderPath = []) {
-    for (const n of nodes || []) {
-      if (n.type === 'folder') {
-        // Спускаемся в папку, накапливая путь
-        walk(n.children || [], [...folderPath, n.name]);
-      } else if (n.type === 'group') {
-        // На всякий случай подстрахуем старые данные без groupId
-        if (!n.groupId) n.groupId = crypto.randomUUID();
-        out.push({
-          id: n.id,            // id узла в дереве
-          name: n.name,        // имя группы
-          groupId: n.groupId,  // то, что используем в /groups/:groupId
-          path: folderPath.join(' / '), // путь папок, где лежит группа
-        });
-      }
-    }
-  }
-
-  walk(root.children || [], []);
-  return out;
-}
-
-
-
-
-
-
-
-
-
 function detachNode(tree, id) {
-  // вырезаем узел и возвращаем его
   const stack = [...tree];
   while (stack.length) {
     const n = stack.shift();
     if (!n.children) continue;
     const idx = n.children.findIndex(c => c.id === id);
-    if (idx !== -1) {
-      const [picked] = n.children.splice(idx, 1);
-      return picked;
-    }
+    if (idx !== -1) { const [picked] = n.children.splice(idx, 1); return picked; }
     stack.push(...n.children);
   }
-  // если это корень верхнего уровня
   const i = tree.findIndex(n => n.id === id);
-  if (i !== -1) {
-    const [picked] = tree.splice(i, 1);
-    return picked;
-  }
-  // не нашли — создадим пустышку чтоб не падать
+  if (i !== -1) { const [picked] = tree.splice(i, 1); return picked; }
   return { id, name: 'unknown', type: 'folder', children: [] };
 }
 
+// Группы внутри выбранной папки (включая вложенные)
+export function listGroups(parentId = 'root') {
+  const tree = loadTree();
+  const parent = parentId === 'root' ? ensureRoot(tree) : findNode(tree, parentId) || ensureRoot(tree);
+
+  const out = [];
+  function walk(nodes, folderPath = []) {
+    for (const n of nodes || []) {
+      if (n.type === 'folder') {
+        walk(n.children || [], [...folderPath, n.name]);
+      } else if (n.type === 'group') {
+        if (!n.groupId) n.groupId = crypto.randomUUID();
+        out.push({ id: n.id, name: n.name, groupId: n.groupId, path: folderPath.join(' / ') });
+      }
+    }
+  }
+  walk(parent.children || [], []);
+  return out;
+}
+
+// именованные экспорт-алиасы для совместимости
 export { deleteNode as deleteGroup };
-
-
 export { renameNode as renameGroup };
 export { moveNode as moveGroup };
-export { loadTree as getTree }; // если где-то удобнее так читать
+export const TREE_CHANGED_EVENT = EVT;
