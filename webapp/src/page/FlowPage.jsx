@@ -1,3 +1,4 @@
+// src/page/FlowPage.jsx
 import {
   ReactFlowProvider,
   useReactFlow,
@@ -25,11 +26,9 @@ const NODE_TYPES = { card: CardNode };
 const EDGE_TYPES = { deletable: DeletableEdge };
 
 const initialDraft = {
-  title:null, conditionId:'', conditionLabel:'',
-  assignee:null, difficulty:null, type:null, group:null
+  title: null, conditionId: '', conditionLabel: '',
+  assignee: null, difficulty: null, type: null, group: null,
 };
-
-
 
 export default function FlowPage() {
   return (
@@ -40,17 +39,18 @@ export default function FlowPage() {
 }
 
 function Canvas() {
-
- const { groupId } = useParams();
- const navigate = useNavigate();
-
+  const { groupId = 'default' } = useParams();
+  const navigate = useNavigate();
 
   const rf            = useReactFlow();
   const connectRef    = useRef(null);
   const wrapperRef    = useRef(null);
   const didConnectRef = useRef(false);
-
   const suppressClickRef = useRef(false);
+
+
+ 
+
 
   const cloneDragRef = useRef({
     active: false,
@@ -67,96 +67,82 @@ function Canvas() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   // фабрика узла с коллбэками
-  const makeNode = useCallback(
-    (raw) => ({
-      ...raw,
-      data: {
-        done: false,
-        status: 'pending',
-        cancelPolicy: { enabled: false, mode: 'none' },
-        selectedDeps: [], cancelSelectedDeps: [],
-        overdue: false,
-        initials: '', avatarUrl: '',
-        difficulty: 0, taskType: '', description: '',
-        showIcon: false,  // ← дефолт
-        group: '',
-        ...raw.data,
+const makeNode = useCallback(
+  (raw) => ({
+    ...raw,
+    data: {
+      done: false,
+      status: 'pending',
+      cancelPolicy: { enabled: false, mode: 'none' },
+      selectedDeps: [], cancelSelectedDeps: [],
+      overdue: false,
+      initials: '', avatarUrl: '',
+      difficulty: 0, taskType: '', description: '',
+      showIcon: false,
+      group: '',
 
-        onTitle: (id, t) =>
-          setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, label:t } } : n)),
-        onColor: (id, c) =>
-          setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, color:c } } : n)),
-        onToggle: (id, val) =>
-          setNodes(ns => ns.map(n =>
-            n.id === id ? { ...n, data:{ ...n.data, done:val, status: val ? 'done' : n.data.status } } : n
-          )),
+      // важно: сначала спредим входящие данные...
+      ...raw.data,
 
-     onShowIcon: (id, val) =>
-       setNodes(ns => ns.map(n =>
-         n.id === id ? { ...n, data:{ ...n.data, showIcon: !!val } } : n
-       )),
+      // ...а потом подстраховываемся и дописываем groupId
+      groupId: raw.data?.groupId ?? groupId,
 
-
-
-        onCancel: (id) =>
-          setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, status:'cancel' } } : n)),
-        onFreeze: (id) =>
-          setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, status:'frozen' } } : n)),
-
-        onCancelPolicyToggle: (id, enabled) =>
-          setNodes(ns => ns.map(n =>
-            n.id === id ? { ...n, data:{ ...n.data, cancelPolicy:{ ...n.data.cancelPolicy, enabled } } } : n
-          )),
-        onCancelPolicyChange: (id, mode) =>
-          setNodes(ns => ns.map(n =>
-            n.id === id ? { ...n, data:{ ...n.data, cancelPolicy:{ ...n.data.cancelPolicy, mode } } } : n
-          )),
-
-        onDescription: (id, text) =>
-          setNodes(ns => ns.map(n =>
-            n.id === id ? { ...n, data:{ ...n.data, description: text } } : n
-          )),
-
-        onToggleDep: (id, edgeId, checked) =>
-          setNodes(ns => ns.map(n => {
-            if (n.id !== id) return n;
-            const cur  = n.data.selectedDeps || [];
-            const next = checked ? Array.from(new Set([...cur, edgeId])) : cur.filter(x => x !== edgeId);
-            return { ...n, data:{ ...n.data, selectedDeps: next } };
-          })),
-        onToggleCancelDep: (id, edgeId, checked) =>
-          setNodes(ns => ns.map(n => {
-            if (n.id !== id) return n;
-            const cur  = n.data.cancelSelectedDeps || [];
-            const next = checked ? Array.from(new Set([...cur, edgeId])) : cur.filter(x => x !== edgeId);
-            return { ...n, data:{ ...n.data, cancelSelectedDeps: next } };
-          })),
-
-        onDelete: (id) => {
-          setNodes(ns => ns.filter(n => n.id !== id));
-          setEdges(es => es.filter(e => e.source !== id && e.target !== id));
-        },
-
-        onRuleChange: (id, val) =>
-          setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, rule:val } } : n)),
-
-        onOverdue: (id, val) =>
-          setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, overdue: !!val } } : n)),
-      },
-    }),
-    [setNodes, setEdges]
-  );
-
-  // загрузка
-  useEffect(() => {
-
-    const { nodes: n, edges: e } = loadFlow(groupId);
+      onTitle: (id, t) => setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, label:t } } : n)),
+      onColor: (id, c) => setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, color:c } } : n)),
+      onToggle: (id, val) => setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, done:val, status: val ? 'done' : n.data.status } } : n)),
+      onShowIcon: (id, val) => setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, showIcon: !!val } } : n)),
+      onCancel: (id) => setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, status:'cancel' } } : n)),
+      onFreeze: (id) => setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, status:'frozen' } } : n)),
+      onCancelPolicyToggle: (id, enabled) => setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, cancelPolicy:{ ...n.data.cancelPolicy, enabled } } } : n)),
+      onCancelPolicyChange: (id, mode) => setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, cancelPolicy:{ ...n.data.cancelPolicy, mode } } } : n)),
+      onDescription: (id, text) => setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, description:text } } : n)),
+      onToggleDep: (id, edgeId, checked) => setNodes(ns => ns.map(n => {
+        if (n.id !== id) return n;
+        const cur  = n.data.selectedDeps || [];
+        const next = checked ? Array.from(new Set([...cur, edgeId])) : cur.filter(x => x !== edgeId);
+        return { ...n, data:{ ...n.data, selectedDeps: next } };
+      })),
+      onToggleCancelDep: (id, edgeId, checked) => setNodes(ns => ns.map(n => {
+        if (n.id !== id) return n;
+        const cur  = n.data.cancelSelectedDeps || [];
+        const next = checked ? Array.from(new Set([...cur, edgeId])) : cur.filter(x => x !== edgeId);
+        return { ...n, data:{ ...n.data, cancelSelectedDeps: next } };
+      })),
+      onDelete: (id) => { setNodes(ns => ns.filter(n => n.id !== id)); setEdges(es => es.filter(e => e.source !== id && e.target !== id)); },
+      onRuleChange: (id, val) => setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, rule:val } } : n)),
+      onOverdue: (id, val) => setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, overdue: !!val } } : n)),
+    },
+  }),
+  [setNodes, setEdges, groupId]
+);
 
 
-    setNodes(n.map(makeNode));
-    setEdges(e);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
- }, [groupId]);
+
+
+
+
+
+
+
+// загрузка ТОЛЬКО из текущей группы
+useEffect(() => {
+  const { nodes: n = [], edges: e = [] } = loadFlow(groupId);
+  const fixed = n.map(node => ({
+    ...node,
+    data: {
+      ...node.data,
+      group: node.data?.group || node.data?.groupId || groupId, // ← страховка
+      groupId: node.data?.groupId || groupId,
+    },
+  }));
+  setNodes(fixed.map(makeNode));
+  setEdges(e);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [groupId]);
+
+
+
+
 
   // курсор copy при Ctrl/⌘
   useEffect(() => {
@@ -198,16 +184,12 @@ function Canvas() {
         return { animated:false, style:{ stroke:'#007BFF', strokeWidth:2 } };
     }
   };
-
   const cancelOverlay = (policy) => {
     if (!policy?.enabled) return {};
     switch (policy.mode) {
-      case 'prevCanceled':
-        return { animated:true, style:{ stroke:'#9C27B0', strokeDasharray:'6 4', strokeWidth:2 } };
-      case 'anySelectedCanceled':
-        return { animated:true, style:{ stroke:'#FF5252', strokeDasharray:'6 4', strokeWidth:2 } };
-      default:
-        return {};
+      case 'prevCanceled':        return { animated:true, style:{ stroke:'#9C27B0', strokeDasharray:'6 4', strokeWidth:2 } };
+      case 'anySelectedCanceled': return { animated:true, style:{ stroke:'#FF5252', strokeDasharray:'6 4', strokeWidth:2 } };
+      default:                    return {};
     }
   };
 
@@ -315,17 +297,21 @@ function Canvas() {
         status: 'pending',
         initials: '', avatarUrl: '',
         difficulty: 0, taskType: '', description: '',
-         showIcon: false,
+        showIcon: false,
         group: groupId || '',
+        groupId,
       },
     };
+
+// ← ВСТАВЬ СЮДА:
+console.log('CREATE NODE (addNode)', { groupLabel: groupId, groupId, data: raw.data });
+
     setNodes(ns => [...ns, makeNode(raw)]);
- }, [makeNode, groupId]);
+  }, [makeNode, groupId]);
 
   const onConnect = useCallback((params) => {
     didConnectRef.current = true;
     setEdges(es => addEdge({ ...params, ...baseEdge }, es));
-
     setQuickMenu(m => ({ ...m, show: false }));
     setComposing(false);
     connectRef.current = null;
@@ -358,15 +344,15 @@ function Canvas() {
     const isPane = ev?.target?.classList?.contains?.('react-flow__pane');
     if (!isPane) return;
 
-    const bounds = wrapperRef.current.getBoundingClientRect();
-    const pos    = rf.project({ x: ev.clientX - bounds.left, y: ev.clientY - bounds.top });
+const pos = rf.screenToFlowPosition({ x: ev.clientX, y: ev.clientY });
 
     const label      = draft.title || 'Новая карточка';
     const rule       = draft.conditionId || '';
     const initials   = draft.assignee ? draft.assignee.split(' ').map(s => s[0]).join('').slice(0,2).toUpperCase() : '';
     const difficulty = draft.difficulty ? Number(draft.difficulty) : 0;
     const taskType   = draft.type || '';
-    const group      = draft.group || '';
+
+    const groupLabel = (draft.group?.trim() || groupId);  // ← ВЫЧИСЛЯЕМ ТУТ
 
     const newId = crypto.randomUUID();
     const srcId = connectRef.current;
@@ -380,9 +366,15 @@ function Canvas() {
         cancelPolicy:{ enabled:false, mode:'none' },
         selectedDeps:[], cancelSelectedDeps:[], overdue:false,
         status:'pending', initials, avatarUrl:'', difficulty, taskType,
-         group: draft.group || '',   // ⬅️ добавили
+    
+
+         group: groupLabel,         // ← ИСПОЛЬЗУЕМ
+      groupId,                   // ← id группы
       },
     };
+
+    // ← ВСТАВЬ СЮДА:
+console.log('CREATE NODE (paneClick)', { groupLabel, groupId, data: raw.data });
 
     setNodes(ns => [...ns, makeNode(raw)]);
 
@@ -398,7 +390,7 @@ function Canvas() {
     setComposing(false);
     connectRef.current = null;
     suppressClickRef.current = true;
-  }, [composing, draft, rf, makeNode]);
+  }, [composing, draft, rf, makeNode, groupId]);
 
   // Ctrl + drag = копировать ноду (с placeholder)
   const onNodeCtrlDragStart = useCallback((event, node) => {
@@ -483,8 +475,14 @@ function Canvas() {
         description: src.data.description || '',
         group: src.data.group || '',
         showIcon: !!src.data.showIcon,
+        groupId: src.data.groupId || groupId,
+
       },
     };
+
+
+    // ← ВСТАВЬ СЮДА:
+console.log('CREATE NODE (ctrlDragCopy)', { from: src.id, groupId, data: raw.data });
 
     setNodes(ns => {
       const noGhosts = ns.filter(n => !String(n.id).startsWith('ghost-'));
@@ -498,7 +496,7 @@ function Canvas() {
 
     wrapperRef.current?.classList.remove('rf-copy-cursor');
     cloneDragRef.current = { active:false, nodeId:null, startPos:null, placeholderId:null };
-  }, [nodes, setNodes, makeNode]);
+  }, [nodes, setNodes, makeNode, groupId]);
 
   // клик по пустому месту — создать карточку
   const onPaneClick = useCallback((ev) => {
@@ -509,18 +507,20 @@ function Canvas() {
     }
     if (!wrapperRef.current || !connectRef.current) return;
 
-    const bounds = wrapperRef.current.getBoundingClientRect();
-    const pos    = rf.project({ x: ev.clientX - bounds.left, y: ev.clientY - bounds.top });
+  const pos = rf.screenToFlowPosition({ x: ev.clientX, y: ev.clientY });
 
     const label      = draft.title || 'Новая карточка';
     const rule       = draft.conditionId || '';
     const initials   = draft.assignee ? draft.assignee.split(' ').map(s => s[0]).join('').slice(0,2).toUpperCase() : '';
     const difficulty = draft.difficulty ? Number(draft.difficulty) : 0;
     const taskType   = draft.type || '';
-    const group      = draft.group || '';
 
     const newId = crypto.randomUUID();
     const srcId = connectRef.current;
+
+// было: const groupLabel = draft.group ?? groupId;
+const groupLabel = (draft.group?.trim() || groupId);
+
 
     const raw = {
       id: newId,
@@ -532,21 +532,25 @@ function Canvas() {
         selectedDeps:[], cancelSelectedDeps:[], overdue:false,
         status:'pending', initials, avatarUrl:'', difficulty, taskType,
         showIcon: false,
-        group,
+
+    group: groupLabel,   // ← ВАЖНО: метка для отображения
+    groupId,             // ← id для фильтрации/сохранения
+
+
       },
     };
+
+
+
+    // ← ВСТАВЬ СЮДА:
+console.log('CREATE NODE (connectEnd)', { groupLabel, groupId, data: raw.data });
 
     setNodes(ns => [...ns, makeNode(raw)]);
 
     requestAnimationFrame(() => {
       setEdges(es => [
         ...es,
-        {
-          id: crypto.randomUUID(),
-          source: srcId,
-          target: newId,
-          ...baseEdge,
-        },
+        { id: crypto.randomUUID(), source: srcId, target: newId, ...baseEdge },
       ]);
     });
 
@@ -555,7 +559,7 @@ function Canvas() {
     setComposing(false);
     connectRef.current = null;
     if (wrapperRef.current) wrapperRef.current.style.cursor = '';
-  }, [composing, draft, rf, makeNode]);
+  }, [composing, draft, rf, makeNode, groupId]);
 
   // Esc — отмена режима
   useEffect(() => {
@@ -570,7 +574,7 @@ function Canvas() {
     return () => window.removeEventListener('keydown', onKey);
   }, [composing]);
 
-  // persist
+  // persist — сохраняем в сторадж ТЕКУЩЕЙ группы
   useEffect(() => {
     const plain = nodes.map(({ data, ...n }) => ({
       ...n,
@@ -584,7 +588,6 @@ function Canvas() {
         selectedDeps: data.selectedDeps || [],
         cancelSelectedDeps: data.cancelSelectedDeps || [],
         overdue: !!data.overdue,
-
         initials: data.initials || '',
         avatarUrl: data.avatarUrl || '',
         difficulty: typeof data.difficulty === 'number' ? data.difficulty : 0,
@@ -592,10 +595,11 @@ function Canvas() {
         description: data.description || '',
         group: data.group || '',
         showIcon: !!data.showIcon,
+        groupId,
       },
     }));
- saveFlow(groupId, { nodes: plain, edges });
- }, [nodes, edges, groupId]);
+    saveFlow(groupId, { nodes: plain, edges });
+  }, [nodes, edges, groupId]);
 
   // deps для RuleMenu
   const nodesView = useMemo(() =>
@@ -611,25 +615,20 @@ function Canvas() {
 
   return (
     <>
-    
+      <div style={{ display:'flex', gap:12, alignItems:'center', padding:'8px 12px' }}>
+        <button onClick={() => navigate('/groups')}>⟵ На главную</button>
+        <div style={{ fontWeight:600, opacity:.75 }}>Группа: {groupId}</div>
+      </div>
 
-     <div style={{ display:'flex', gap:12, alignItems:'center', padding:'8px 12px' }}>
-       <button onClick={() => navigate('/groups')}>⟵ На главную</button>
-       <div style={{ fontWeight:600, opacity:.75 }}>Группа: {groupId}</div>
-       {/* при желании можно подгрузить имя группы из loadGroups() */}
-     </div>
-
-
-  <Toolbar
+      <Toolbar
         onAdd={addNode}
         onReset={() => {
-          localStorage.removeItem('rf-demo');
+          // если у тебя общий ключ — лучше зови специальный reset(groupId)
+          // тут просто чистим локальный стейт:
           setNodes([]); setEdges([]);
+          saveFlow(groupId, { nodes: [], edges: [] });
         }}
       />
-
-
-
 
       <div
         ref={wrapperRef}
@@ -652,10 +651,8 @@ function Canvas() {
           defaultEdgeOptions={baseEdge}
           fitView
           panOnDrag={!composing}
-
           onNodeDragStart={onNodeCtrlDragStart}
           onNodeDragStop={onNodeCtrlDragStop}
-
           selectionOnDrag={composing ? false : true}
           nodesDraggable={composing ? false : true}
         >
