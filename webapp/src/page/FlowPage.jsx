@@ -19,6 +19,8 @@ import Toolbar       from '../companet/Toolbar';
 import DeletableEdge from '../companet/DeletableEdge';
 import QuickMenu     from '../companet/QuickMenu';
 
+import { useParams, useNavigate } from 'react-router-dom';
+
 const NODE_TYPES = { card: CardNode };
 const EDGE_TYPES = { deletable: DeletableEdge };
 
@@ -26,6 +28,8 @@ const initialDraft = {
   title:null, conditionId:'', conditionLabel:'',
   assignee:null, difficulty:null, type:null, group:null
 };
+
+
 
 export default function FlowPage() {
   return (
@@ -36,6 +40,11 @@ export default function FlowPage() {
 }
 
 function Canvas() {
+
+ const { groupId } = useParams();
+ const navigate = useNavigate();
+
+
   const rf            = useReactFlow();
   const connectRef    = useRef(null);
   const wrapperRef    = useRef(null);
@@ -140,11 +149,14 @@ function Canvas() {
 
   // загрузка
   useEffect(() => {
-    const { nodes: n, edges: e } = loadFlow();
+
+    const { nodes: n, edges: e } = loadFlow(groupId);
+
+
     setNodes(n.map(makeNode));
     setEdges(e);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+ }, [groupId]);
 
   // курсор copy при Ctrl/⌘
   useEffect(() => {
@@ -304,11 +316,11 @@ function Canvas() {
         initials: '', avatarUrl: '',
         difficulty: 0, taskType: '', description: '',
          showIcon: false,
-        group: '',
+        group: groupId || '',
       },
     };
     setNodes(ns => [...ns, makeNode(raw)]);
-  }, [makeNode]);
+ }, [makeNode, groupId]);
 
   const onConnect = useCallback((params) => {
     didConnectRef.current = true;
@@ -582,8 +594,8 @@ function Canvas() {
         showIcon: !!data.showIcon,
       },
     }));
-    saveFlow({ nodes: plain, edges });
-  }, [nodes, edges]);
+ saveFlow(groupId, { nodes: plain, edges });
+ }, [nodes, edges, groupId]);
 
   // deps для RuleMenu
   const nodesView = useMemo(() =>
@@ -599,13 +611,25 @@ function Canvas() {
 
   return (
     <>
-      <Toolbar
+    
+
+     <div style={{ display:'flex', gap:12, alignItems:'center', padding:'8px 12px' }}>
+       <button onClick={() => navigate('/groups')}>⟵ На главную</button>
+       <div style={{ fontWeight:600, opacity:.75 }}>Группа: {groupId}</div>
+       {/* при желании можно подгрузить имя группы из loadGroups() */}
+     </div>
+
+
+  <Toolbar
         onAdd={addNode}
         onReset={() => {
           localStorage.removeItem('rf-demo');
           setNodes([]); setEdges([]);
         }}
       />
+
+
+
 
       <div
         ref={wrapperRef}
