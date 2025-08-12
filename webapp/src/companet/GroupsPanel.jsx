@@ -1,16 +1,14 @@
 // src/companet/GroupsPanel.jsx
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
-  listGroups, createGroup, renameNode, deleteNode,
+  listGroupsDirect, createGroup, renameNode, deleteNode,
   TREE_CHANGED_EVENT,
 } from '../service/groupsStorage';
 
 export default function GroupsPanel({ folderId }) {
-  const nav = useNavigate();
   const [items, setItems] = useState([]);
 
-  const refresh = () => setItems(listGroups(folderId || 'root'));
+  const refresh = () => setItems(listGroupsDirect(folderId || 'root'));
 
   useEffect(() => { refresh(); }, [folderId]);
   useEffect(() => {
@@ -26,7 +24,9 @@ export default function GroupsPanel({ folderId }) {
   return (
     <div style={{ padding: 12 }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 12 }}>
-        <h3 style={{ margin:0 }}>Группы</h3>
+        <h3 style={{ margin:0 }}>
+          Группы <span style={{ opacity:.6, fontWeight:400 }}>({items.length})</span>
+        </h3>
         <button onClick={() => { createGroup(folderId, 'Новая группа'); }}>
           + Создать группу
         </button>
@@ -43,7 +43,10 @@ export default function GroupsPanel({ folderId }) {
               <div style={{ fontSize:12, color:'#6b7280', marginBottom:8 }}>/{g.path}</div>
             )}
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              <button onClick={() => nav(`/groups/${g.groupId}`)}>Открыть</button>
+              {/* открыть в новой вкладке */}
+              <button onClick={() => window.open(`/groups/${g.groupId}`, '_blank', 'noopener,noreferrer')}>
+                Открыть
+              </button>
               <button onClick={() => {
                 const t = window.prompt('Название группы', g.name);
                 if (t) renameNode(g.id, t);

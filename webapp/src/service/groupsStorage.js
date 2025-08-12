@@ -15,7 +15,6 @@ export function loadTree() {
 
 export function saveTree(tree) {
   localStorage.setItem(KEY, JSON.stringify(tree));
-  // Сообщаем всем компонентам, что дерево изменилось
   window.dispatchEvent(new Event(EVT));
   return tree;
 }
@@ -108,7 +107,9 @@ function detachNode(tree, id) {
   return { id, name: 'unknown', type: 'folder', children: [] };
 }
 
-// Группы внутри выбранной папки (включая вложенные)
+// === списки групп ===
+
+// рекурсивно (как было)
 export function listGroups(parentId = 'root') {
   const tree = loadTree();
   const parent = parentId === 'root' ? ensureRoot(tree) : findNode(tree, parentId) || ensureRoot(tree);
@@ -128,7 +129,37 @@ export function listGroups(parentId = 'root') {
   return out;
 }
 
-// именованные экспорт-алиасы для совместимости
+// ТОЛЬКО прямые группы внутри выбранной папки (без вложенных)
+export function listGroupsDirect(parentId = 'root') {
+  const tree = loadTree();
+  const parent = parentId === 'root'
+    ? ensureRoot(tree)
+    : findNode(tree, parentId) || ensureRoot(tree);
+
+  // путь до родителя (без самой папки)
+  function findPathToId(id, nodes = tree, acc = []) {
+    for (const n of nodes) {
+      if (n.id === id) return acc;
+      if (n.type === 'folder' && n.children?.length) {
+        const res = findPathToId(id, n.children, [...acc, n.name]);
+        if (res) return res;
+      }
+    }
+    return null;
+  }
+  const folderPath = findPathToId(parent.id) || [];
+
+  const out = [];
+  for (const n of parent.children || []) {
+    if (n.type === 'group') {
+      if (!n.groupId) n.groupId = crypto.randomUUID();
+      out.push({ id: n.id, name: n.name, groupId: n.groupId, path: folderPath.join(' / ') });
+    }
+  }
+  return out;
+}
+
+// алиасы
 export { deleteNode as deleteGroup };
 export { renameNode as renameGroup };
 export { moveNode as moveGroup };

@@ -20,14 +20,14 @@ export default function SidebarTree({ onPick }) {
 
   useEffect(() => { reload(); }, [reload]);
 
-  // ловим внешние изменения стораджа (rename/delete/move/create)
+  // слушаем внешние изменения стораджа
   useEffect(() => {
     const h = () => { reload(); bump(); };
     window.addEventListener(TREE_CHANGED_EVENT, h);
     return () => window.removeEventListener(TREE_CHANGED_EVENT, h);
   }, [reload]);
 
-  // авто-закрытие контекстного меню (клик, скролл, Esc)
+  // авто-закрытие контекстного меню
   useEffect(() => {
     const close = () => setMenu(null);
     const esc = (e) => { if (e.key === 'Escape') setMenu(null); };
@@ -72,7 +72,7 @@ export default function SidebarTree({ onPick }) {
     setMenu(null);
   };
 
-  // Рендер строки: здесь ловим ПКМ. ВАЖНО — вернуть attrs и ref!
+  // строка списка — ловим ПКМ (обязательно вернуть attrs и ref)
   const Row = ({ node, innerRef, attrs, children }) => {
     const onContextMenu = (e) => {
       e.preventDefault();
@@ -90,7 +90,6 @@ export default function SidebarTree({ onPick }) {
         {...attrs}
         ref={innerRef}
         onContextMenu={(e) => {
-          // сохраним поведение дерева + наш ПКМ
           attrs?.onContextMenu?.(e);
           onContextMenu(e);
         }}
@@ -114,13 +113,20 @@ export default function SidebarTree({ onPick }) {
       <Tree
         key={version}
         data={treeData}
-        renderRow={Row}  // <-- добавили
+        renderRow={Row}
+        indent={20}
+
+        // DnD: root не таскаем, внутрь группы кидать нельзя
+        disableDrag={(node) => node.id === 'root'}
+        disableDrop={({ parentNode }) => parentNode?.data?.type === 'group'}
+
         onReady={(api) => {
           const init = selectedId || 'root';
           api.select([init]);
           const node = findInLocal(init);
           onPick?.(node || { id: 'root', type: 'folder', name: 'Все группы' });
         }}
+
         onSelect={(items) => {
           const ids = toIds(items);
           const id = ids[0] || 'root';
@@ -128,24 +134,58 @@ export default function SidebarTree({ onPick }) {
           const node = findInLocal(id);
           onPick?.(node || { id, type: 'folder', name: 'Папка' });
         }}
+
         onMove={({ dragIds, parentId, index }) => {
           dragIds.forEach((id, i) => moveNode(id, parentId || 'root', (index ?? 0) + i));
         }}
-        renderNode={({ node, style }) => (
-          <div
-            style={{ ...style, display: 'flex', gap: 8, alignItems: 'center', padding: '4px 8px' }}
-          >
-            <span style={{ width: 18 }}>{node.data.type === 'folder' ? '📁' : '🧩'}</span>
-            <span
-              style={{ flex: 1, cursor: node.isInternal ? 'pointer' : 'default' }}
-              onDoubleClick={() => { if (node.isInternal) node.toggle(); }}
+      >
+        {({ node, style, dragHandle }) => {
+          const isFolder = node.data.type === 'folder';
+          const icon = isFolder ? (node.isOpen ? '📂' : '📁') : '🧩';
+
+          return (
+            <div
+              // НЕ трогаем левый padding — его отвечает Arborist (иерархия)
+              style={{
+                ...style,
+                display: 'flex',
+                gap: 8,
+                alignItems: 'center',
+                paddingTop: 4,
+                paddingBottom: 4,
+                paddingRight: 8,
+                userSelect: 'none',
+              }}
+              // клик по пустому месту строки — просто стандартный select
+              onClick={(e) => node.handleClick(e)}
             >
-              {node.data.name}
-            </span>
-            {/* ✏️ и 🗑 — по твоей просьбе убраны, теперь только через ПКМ */}
-          </div>
-        )}
-      />
+              {/* иконка = зона раскрытия/сворачивания + ручка DnD */}
+              <span
+                ref={dragHandle}
+                title={isFolder ? (node.isOpen ? 'Свернуть' : 'Развернуть') : 'Перетащить'}
+                onClick={(e) => {
+                  e.stopPropagation();         // чтобы не стрельнул select дважды
+                  if (isFolder) node.toggle(); // ТОЛЬКО иконка управляет открытием
+                }}
+                style={{ width: 18, cursor: isFolder ? 'pointer' : (node.id === 'root' ? 'default' : 'grab') }}
+              >
+                {icon}
+              </span>
+
+              {/* название — только выделение (без toggle) */}
+              <span
+                style={{ flex: 1, cursor: 'default' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  node.handleClick(e); // только выделение
+                }}
+              >
+                {node.data.name}
+              </span>
+            </div>
+          );
+        }}
+      </Tree>
 
       {/* Контекстное меню */}
       {menu && (
@@ -178,7 +218,7 @@ export default function SidebarTree({ onPick }) {
           </button>
           <button
             style={{ width: '100%', textAlign: 'left', padding: '6px 10px', background: 'none', border: 'none',
-                     color: '#dc2626', cursor: menu.isRoot ? 'not-allowed' : 'pointer', opacity: menu.isRoot ? .5 : 1 }}
+                     color:'#dc2626', cursor: menu.isRoot ? 'not-allowed' : 'pointer', opacity: menu.isRoot ? .5 : 1 }}
             disabled={menu.isRoot}
             onClick={doDelete}
           >
