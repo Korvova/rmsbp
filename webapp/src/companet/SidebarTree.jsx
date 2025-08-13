@@ -152,51 +152,60 @@ export default function SidebarTree({ onPick }) {
           dragIds.forEach((id, i) => moveNode(id, parentId || 'root', (index ?? 0) + i));
         }}
       >
-        {({ node, style, dragHandle }) => {
-          const isFolder = node.data.type === 'folder';
-          const icon = isFolder ? (node.isOpen ? '📂' : '📁') : '🧩';
 
-          return (
-            <div
-              style={{
-                ...style,
-                display: 'flex',
-                gap: 8,
-                alignItems: 'center',
-                paddingTop: 4,
-                paddingBottom: 4,
-                paddingRight: 8,
-                userSelect: 'none',
-              }}
-              onClick={(e) => node.handleClick(e)} // клик по строке = только select
-            >
-              {/* иконка = раскрытие/сворачивание + ручка DnD */}
-              <span
-                ref={dragHandle}
-                title={isFolder ? (node.isOpen ? 'Свернуть' : 'Развернуть') : 'Перетащить'}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (isFolder) node.toggle();
-                }}
-                style={{ width: 18, cursor: isFolder ? 'pointer' : (node.id === 'root' ? 'default' : 'grab') }}
-              >
-                {icon}
-              </span>
 
-              {/* название — только выделение */}
-              <span
-                style={{ flex: 1, cursor: 'default' }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  node.handleClick(e);
-                }}
-              >
-                {node.data.name}
-              </span>
-            </div>
-          );
+
+  {({ node, style, dragHandle }) => {
+    const isFolder = node.data.type === 'folder';
+    const icon = isFolder ? (node.isOpen ? '📂' : '📁') : '🧩';
+
+    return (
+      <div
+        style={{
+          ...style,
+          display: 'flex',
+          gap: 8,
+          alignItems: 'center',
+          paddingTop: 4,
+          paddingBottom: 4,
+          paddingRight: 8,
+          userSelect: 'none',
         }}
-      </Tree>
+        onClick={(e) => node.handleClick(e)} // клик по названию = только select
+      >
+        {/* Иконка: теперь и toggle, и select → правая панель обновится */}
+        <span
+          ref={dragHandle}
+          title={isFolder ? (node.isOpen ? 'Свернуть' : 'Развернуть') : 'Перетащить'}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (isFolder) {
+              node.toggle();   // раскрыть/свернуть
+              node.select();   // И ВЫБРАТЬ эту папку
+            }
+          }}
+          style={{ width: 18, cursor: isFolder ? 'pointer' : (node.id === 'root' ? 'default' : 'grab') }}
+        >
+          {icon}
+        </span>
+
+        {/* Название — только выделение, без toggle */}
+        <span
+          style={{ flex: 1, cursor: 'default' }}
+          onClick={(e) => {
+            e.stopPropagation();
+            node.handleClick(e);
+          }}
+        >
+          {node.data.name}
+        </span>
+      </div>
+    );
+  }}
+</Tree>
+
+
+
 
       {/* Контекстное меню */}
       {menu && (

@@ -1,8 +1,20 @@
 export default function Toolbar({ onAdd, onReset }) {
   return (
     <div style={{ position:'absolute', left:10, top:10, zIndex:10 }}>
-      <button onClick={onAdd}>+ карточка</button>
+      <button onClick={onAdd}>+🪪 Задача</button>
       <button onClick={onReset} style={{ marginLeft:8 }}>🗑 очистить</button>
+
+  <button style={{ marginLeft:8 }}> 🧮 Канбан </button>
+  <button style={{ marginLeft:8 }}> +👥 Участники  </button>
+  <button style={{ marginLeft:8 }}> +🤖 Чекеры  </button>
+  <button style={{ marginLeft:8 }}> +🗂️ Хранилище  </button>
+  <button style={{ marginLeft:8 }}> + 🗐 Документария </button>
+  <button style={{ marginLeft:8 }}> + 📅 Календарь</button>
+  <button style={{ marginLeft:8 }}> + 💶 Бюджет</button>
+  
+
+
+
     </div>
   );
 }
