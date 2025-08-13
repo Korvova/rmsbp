@@ -10,7 +10,7 @@ export default function SidebarTree({ onPick }) {
   const [treeData, setTreeData] = useState([]);
   const [selectedId, setSelectedId] = useState('root');
   const [version, setVersion] = useState(0);
-  const [menu, setMenu] = useState(null); // { x, y, id, name, isRoot }
+  const [menu, setMenu] = useState(null); // { x, y, id, name, isRoot, isFolder }
   const bump = () => setVersion(v => v + 1);
 
   const reload = useCallback(() => {
@@ -71,6 +71,18 @@ export default function SidebarTree({ onPick }) {
     }
     setMenu(null);
   };
+  const doCreateFolder = () => {
+    if (!menu || !menu.isFolder) return;
+    const t = prompt('Название папки', 'Новая папка');
+    if (t && t.trim()) createFolder(menu.id, t.trim());
+    setMenu(null);
+  };
+  const doCreateGroup = () => {
+    if (!menu || !menu.isFolder) return;
+    const t = prompt('Название проекта', 'Новая группа');
+    if (t && t.trim()) createGroup(menu.id, t.trim());
+    setMenu(null);
+  };
 
   // строка списка — ловим ПКМ (обязательно вернуть attrs и ref)
   const Row = ({ node, innerRef, attrs, children }) => {
@@ -83,6 +95,7 @@ export default function SidebarTree({ onPick }) {
         id: node.id,
         name: node.data?.name ?? '',
         isRoot: node.id === 'root',
+        isFolder: node.data?.type === 'folder',
       });
     };
     return (
@@ -145,7 +158,6 @@ export default function SidebarTree({ onPick }) {
 
           return (
             <div
-              // НЕ трогаем левый padding — его отвечает Arborist (иерархия)
               style={{
                 ...style,
                 display: 'flex',
@@ -156,28 +168,27 @@ export default function SidebarTree({ onPick }) {
                 paddingRight: 8,
                 userSelect: 'none',
               }}
-              // клик по пустому месту строки — просто стандартный select
-              onClick={(e) => node.handleClick(e)}
+              onClick={(e) => node.handleClick(e)} // клик по строке = только select
             >
-              {/* иконка = зона раскрытия/сворачивания + ручка DnD */}
+              {/* иконка = раскрытие/сворачивание + ручка DnD */}
               <span
                 ref={dragHandle}
                 title={isFolder ? (node.isOpen ? 'Свернуть' : 'Развернуть') : 'Перетащить'}
                 onClick={(e) => {
-                  e.stopPropagation();         // чтобы не стрельнул select дважды
-                  if (isFolder) node.toggle(); // ТОЛЬКО иконка управляет открытием
+                  e.stopPropagation();
+                  if (isFolder) node.toggle();
                 }}
                 style={{ width: 18, cursor: isFolder ? 'pointer' : (node.id === 'root' ? 'default' : 'grab') }}
               >
                 {icon}
               </span>
 
-              {/* название — только выделение (без toggle) */}
+              {/* название — только выделение */}
               <span
                 style={{ flex: 1, cursor: 'default' }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  node.handleClick(e); // только выделение
+                  node.handleClick(e);
                 }}
               >
                 {node.data.name}
@@ -200,7 +211,7 @@ export default function SidebarTree({ onPick }) {
             boxShadow: '0 8px 32px rgba(0,0,0,.12)',
             padding: 6,
             zIndex: 1000,
-            minWidth: 180,
+            minWidth: 200,
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -208,21 +219,64 @@ export default function SidebarTree({ onPick }) {
             {menu.name}{menu.isRoot ? ' (root)' : ''}
           </div>
           <hr style={{ border: 0, borderTop: '1px solid #f1f5f9', margin: '6px 0' }} />
+
+          {/* Создать папку */}
           <button
-            style={{ width: '100%', textAlign: 'left', padding: '6px 10px', background: 'none', border: 'none',
-                     cursor: menu.isRoot ? 'not-allowed' : 'pointer', opacity: menu.isRoot ? .5 : 1 }}
+            style={{
+              width: '100%', textAlign: 'left', padding: '6px 10px',
+              background: 'none', border: 'none',
+              cursor: menu.isFolder ? 'pointer' : 'not-allowed',
+              opacity: menu.isFolder ? 1 : .5,
+            }}
+            disabled={!menu.isFolder}
+            onClick={doCreateFolder}
+          >
+            ➕ Создать папку
+          </button>
+
+          {/* Создать проект */}
+          <button
+            style={{
+              width: '100%', textAlign: 'left', padding: '6px 10px',
+              background: 'none', border: 'none',
+              cursor: menu.isFolder ? 'pointer' : 'not-allowed',
+              opacity: menu.isFolder ? 1 : .5,
+            }}
+            disabled={!menu.isFolder}
+            onClick={doCreateGroup}
+          >
+            🧩 Создать проект
+          </button>
+
+          <hr style={{ border: 0, borderTop: '1px solid #f1f5f9', margin: '6px 0' }} />
+
+          {/* Переименовать */}
+          <button
+            style={{
+              width: '100%', textAlign: 'left', padding: '6px 10px',
+              background: 'none', border: 'none',
+              cursor: menu.isRoot ? 'not-allowed' : 'pointer',
+              opacity: menu.isRoot ? .5 : 1
+            }}
             disabled={menu.isRoot}
             onClick={doRename}
           >
-            Переименовать
+            ✏️ Переименовать
           </button>
+
+          {/* Удалить */}
           <button
-            style={{ width: '100%', textAlign: 'left', padding: '6px 10px', background: 'none', border: 'none',
-                     color:'#dc2626', cursor: menu.isRoot ? 'not-allowed' : 'pointer', opacity: menu.isRoot ? .5 : 1 }}
+            style={{
+              width: '100%', textAlign: 'left', padding: '6px 10px',
+              background: 'none', border: 'none',
+              color:'#dc2626',
+              cursor: menu.isRoot ? 'not-allowed' : 'pointer',
+              opacity: menu.isRoot ? .5 : 1
+            }}
             disabled={menu.isRoot}
             onClick={doDelete}
           >
-            Удалить
+            🗑 Удалить
           </button>
         </div>
       )}
