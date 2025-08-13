@@ -615,10 +615,10 @@ console.log('CREATE NODE (connectEnd)', { groupLabel, groupId, data: raw.data })
 
   return (
     <>
-      <div style={{ display:'flex', gap:12, alignItems:'center', padding:'8px 12px' }}>
-        <button onClick={() => navigate('/groups')}>⟵ На главную</button>
-        <div style={{ fontWeight:600, opacity:.75 }}>Группа: {groupId}</div>
-      </div>
+<div style={{ display:'flex', gap:12, alignItems:'center', padding:'8px 12px', marginTop: '30px' }}>
+  <button onClick={() => navigate('/groups')}>⟵ На главную</button>
+  <div style={{ fontWeight:600, opacity:.75 }}>Группа: {groupId}</div>
+</div>
 
       <Toolbar
         onAdd={addNode}
