@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import avatar from '../assets/icon.jpg'; // есть в твоём проекте
+import { useNavigate } from 'react-router-dom';
 
 export default function ProfileMenu() {
   const [open, setOpen] = useState(false);
   const boxRef = useRef(null);
+    const nav = useNavigate();   
 
   // закрытие по клику вне и по Esc
   useEffect(() => {
@@ -20,16 +22,19 @@ export default function ProfileMenu() {
     };
   }, []);
 
-  const items = [
-    { key: 'members', label: 'Участники' },
-    { key: 'my-tasks', label: 'Мои задачи' },
-    { key: 'settings', label: 'Настройки' },
-    { key: 'rights',   label: 'Права' },
-    { key: 'logout',   label: 'Выйти' },
-  ];
+const items = [
+  { key: 'members', label: 'Участники', action: () => nav('/members') },
+  { key: 'my-tasks', label: 'Мои задачи' },
+  { key: 'settings', label: 'Настройки' },
+  { key: 'rights',   label: 'Права' },
+  { key: 'logout',   label: 'Выйти' },
+];
 
   return (
     <div ref={boxRef} style={{ position:'relative' }}>
+
+
+
       <button
         onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
         title="Профиль"
@@ -39,6 +44,9 @@ export default function ProfileMenu() {
           background:'#fff', cursor:'pointer'
         }}
       >
+
+
+
         <img
           src={avatar}
           alt="avatar"
@@ -64,10 +72,12 @@ export default function ProfileMenu() {
           }}
           onClick={(e) => e.stopPropagation()}
         >
+         
+         
           {items.map(it => (
             <button
               key={it.key}
-              onClick={() => { console.log('[profile menu]', it.key); setOpen(false); }}
+    onClick={() => { (it.action ? it.action() : console.log('[profile menu]', it.key)); setOpen(false); }}
               style={{
                 width:'100%', textAlign:'left', padding:'8px 10px',
                 background:'none', border:'none', borderRadius:6, cursor:'pointer'
@@ -77,6 +87,10 @@ export default function ProfileMenu() {
             >
               {it.label}
             </button>
+
+
+
+
           ))}
         </div>
       )}
