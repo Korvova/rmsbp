@@ -6,6 +6,8 @@ import {
   listMembers, createMember, updateMember, deleteMember,
 } from '../service/orgStorage';
 
+import ProfileMenu from '../companet/ProfileMenu';
+
 export default function MembersPage() {
   const [departments, setDepartments] = useState([]);
   const [members, setMembers] = useState([]);
@@ -114,109 +116,126 @@ export default function MembersPage() {
   const depNameById = (id) => departments.find(d => d.id === id)?.name || '';
 
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'260px 1fr', height:'100vh' }}>
-      {/* LEFT: Departments */}
-      <div style={{ borderRight:'1px solid #e5e7eb', padding:12, overflow:'auto' }}>
-        <h3 style={{ marginTop:0 }}>Подразделения</h3>
-        <div style={{ display:'flex', gap:8, marginBottom:8 }}>
-          <input
-            value={newDepName}
-            onChange={e => setNewDepName(e.target.value)}
-            placeholder="Название подразделения"
-            style={{ flex:1 }}
-          />
-          <button onClick={onAddDep}>+ Добавить</button>
-        </div>
-
-        <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-          <button
-            style={{
-              textAlign:'left', padding:'6px 8px',
-              background: currentDepId === null ? '#eef2ff' : 'transparent',
-              border:'1px solid #e5e7eb', borderRadius:6
-            }}
-            onClick={() => setCurrentDepId(null)}
-          >
-            Все подразделения
-          </button>
-
-          {departments.map(d => (
-            <div key={d.id}
-                 style={{
-                   display:'flex', alignItems:'center', gap:6,
-                   border:'1px solid #e5e7eb', borderRadius:6, padding:'6px 8px',
-                   background: currentDepId === d.id ? '#eef2ff' : 'transparent'
-                 }}>
-              <button
-                style={{ flex:1, textAlign:'left', background:'transparent', border:'none', cursor:'pointer' }}
-                onClick={() => setCurrentDepId(d.id)}
-                title="Показать участников этого подразделения"
-              >
-                {d.name}
-              </button>
-              <button onClick={() => onRenameDep(d)} title="Переименовать">✏️</button>
-              <button onClick={() => onDeleteDep(d)} title="Удалить">🗑</button>
-            </div>
-          ))}
-        </div>
+    <div style={{ display:'grid', gridTemplateRows:'auto 1fr', height:'100vh' }}>
+      {/* Верхняя панель */}
+      <div style={{
+        display:'flex', justifyContent:'space-between', alignItems:'center',
+        padding:'8px 16px', borderBottom:'1px solid #e5e7eb', background:'#fff'
+      }}>
+        <h2
+          style={{ margin:0, fontSize:18, cursor:'pointer' }}
+          onClick={() => (window.location.href = '/')}
+        >
+          ← На главную
+        </h2>
+        <ProfileMenu />
       </div>
 
-      {/* RIGHT: Members Table */}
-      <div style={{ padding:16, overflow:'auto' }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-          <div>
-            <h2 style={{ margin:0 }}>Участники</h2>
-            <div style={{ opacity:.7, fontSize:12 }}>
-              {currentDepId
-                ? `Фильтр: ${depNameById(currentDepId)}`
-                : 'Фильтр: все подразделения'}
-            </div>
+      {/* Контент: слева подразделения, справа таблица */}
+      <div style={{ display:'grid', gridTemplateColumns:'260px 1fr', height:'100%' }}>
+        {/* LEFT: Departments */}
+        <div style={{ borderRight:'1px solid #e5e7eb', padding:12, overflow:'auto' }}>
+          <h3 style={{ marginTop:0 }}>Подразделения</h3>
+          <div style={{ display:'flex', gap:8, marginBottom:8 }}>
+            <input
+              value={newDepName}
+              onChange={e => setNewDepName(e.target.value)}
+              placeholder="Название подразделения"
+              style={{ flex:1 }}
+            />
+            <button onClick={onAddDep}>+ Добавить</button>
           </div>
-          <button onClick={openAdd}>+ Добавить пользователя</button>
+
+          <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+            <button
+              style={{
+                textAlign:'left', padding:'6px 8px',
+                background: currentDepId === null ? '#eef2ff' : 'transparent',
+                border:'1px solid #e5e7eb', borderRadius:6
+              }}
+              onClick={() => setCurrentDepId(null)}
+            >
+              Все подразделения
+            </button>
+
+            {departments.map(d => (
+              <div key={d.id}
+                   style={{
+                     display:'flex', alignItems:'center', gap:6,
+                     border:'1px solid #e5e7eb', borderRadius:6, padding:'6px 8px',
+                     background: currentDepId === d.id ? '#eef2ff' : 'transparent'
+                   }}>
+                <button
+                  style={{ flex:1, textAlign:'left', background:'transparent', border:'none', cursor:'pointer' }}
+                  onClick={() => setCurrentDepId(d.id)}
+                  title="Показать участников этого подразделения"
+                >
+                  {d.name}
+                </button>
+                <button onClick={() => onRenameDep(d)} title="Переименовать">✏️</button>
+                <button onClick={() => onDeleteDep(d)} title="Удалить">🗑</button>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div style={{ border:'1px solid #e5e7eb', borderRadius:8, overflow:'hidden', background:'#fff' }}>
-          <table style={{ width:'100%', borderCollapse:'collapse' }}>
-            <thead style={{ background:'#f8fafc' }}>
-              <tr>
-                <Th>ID</Th>
-                <Th>ФИО</Th>
-                <Th>Телефон</Th>
-                <Th>Почта</Th>
-                <Th>Подразделение</Th>
-                <Th style={{ minWidth:220 }}>Функциональные обязанности</Th>
-                <Th>Статус</Th>
-                <Th>Ред.</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {membersFiltered.map(m => (
-                <tr key={m.id} style={{ borderTop:'1px solid #f1f5f9' }}>
-                  <Td><code style={{ fontSize:12 }}>{m.uniqueId}</code></Td>
-                  <Td>{m.fullName || '—'}</Td>
-                  <Td>{m.phone || '—'}</Td>
-                  <Td>{m.email || '—'}</Td>
-                  <Td>{depNameById(m.departmentId) || '—'}</Td>
-                  <Td>
-                    {(m.responsibilities || []).length
-                      ? (m.responsibilities || []).join(', ')
-                      : '—'}
-                  </Td>
-                  <Td>{renderStatus(m.status)}</Td>
-                  <Td>
-                    <button onClick={() => openEdit(m)}>Редактировать</button>
-                  </Td>
-                </tr>
-              ))}
-              {membersFiltered.length === 0 && (
+        {/* RIGHT: Members Table */}
+        <div style={{ padding:16, overflow:'auto' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+            <div>
+              <h2 style={{ margin:0 }}>Участники</h2>
+              <div style={{ opacity:.7, fontSize:12 }}>
+                {currentDepId
+                  ? `Фильтр: ${depNameById(currentDepId)}`
+                  : 'Фильтр: все подразделения'}
+              </div>
+            </div>
+            <button onClick={openAdd}>+ Добавить пользователя</button>
+          </div>
+
+          <div style={{ border:'1px solid #e5e7eb', borderRadius:8, overflow:'hidden', background:'#fff' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse' }}>
+              <thead style={{ background:'#f8fafc' }}>
                 <tr>
-                  <Td colSpan={8} style={{ textAlign:'center', opacity:.6, padding:'16px 8px' }}>
-                    Нет участников в выбранном фильтре
-                  </Td>
+                  <Th>ID</Th>
+                  <Th>ФИО</Th>
+                  <Th>Телефон</Th>
+                  <Th>Почта</Th>
+                  <Th>Подразделение</Th>
+                  <Th style={{ minWidth:220 }}>Функциональные обязанности</Th>
+                  <Th>Статус</Th>
+                  <Th>Ред.</Th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {membersFiltered.map(m => (
+                  <tr key={m.id} style={{ borderTop:'1px solid #f1f5f9' }}>
+                    <Td><code style={{ fontSize:12 }}>{m.uniqueId}</code></Td>
+                    <Td>{m.fullName || '—'}</Td>
+                    <Td>{m.phone || '—'}</Td>
+                    <Td>{m.email || '—'}</Td>
+                    <Td>{depNameById(m.departmentId) || '—'}</Td>
+                    <Td>
+                      {(m.responsibilities || []).length
+                        ? (m.responsibilities || []).join(', ')
+                        : '—'}
+                    </Td>
+                    <Td>{renderStatus(m.status)}</Td>
+                    <Td>
+                      <button onClick={() => openEdit(m)}>Редактировать</button>
+                    </Td>
+                  </tr>
+                ))}
+                {membersFiltered.length === 0 && (
+                  <tr>
+                    <Td colSpan={8} style={{ textAlign:'center', opacity:.6, padding:'16px 8px' }}>
+                      Нет участников в выбранном фильтре
+                    </Td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 

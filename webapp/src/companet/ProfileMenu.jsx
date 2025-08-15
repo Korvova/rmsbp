@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import avatar from '../assets/icon.jpg'; // есть в твоём проекте
 import { useNavigate } from 'react-router-dom';
 
+
 export default function ProfileMenu() {
   const [open, setOpen] = useState(false);
   const boxRef = useRef(null);
