@@ -94,7 +94,7 @@
   position: fixed; inset: 0; background: rgba(0,0,0,.35);
   display: flex; align-items: center; justify-content: center; z-index: 2000;
 }
-.modal{
+.modal-descripti{
   width: 540px; max-width: calc(100vw - 32px);
   background: #1f2125; color: #e7ecf3;
   border: 1px solid rgba(255,255,255,.08);
