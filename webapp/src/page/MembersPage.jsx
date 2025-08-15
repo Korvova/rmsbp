@@ -1,12 +1,11 @@
-// /webapp/src/page/MembersPage.jsx
 import { useEffect, useMemo, useState } from 'react';
 import {
   ORG_CHANGED_EVENT,
   listDepartments, createDepartment, renameDepartment, deleteDepartment,
   listMembers, createMember, updateMember, deleteMember,
 } from '../service/orgStorage';
-
 import ProfileMenu from '../companet/ProfileMenu';
+import './MembersPage.css';
 
 export default function MembersPage() {
   const [departments, setDepartments] = useState([]);
@@ -116,101 +115,92 @@ export default function MembersPage() {
   const depNameById = (id) => departments.find(d => d.id === id)?.name || '';
 
   return (
-    <div style={{ display:'grid', gridTemplateRows:'auto 1fr', height:'100vh' }}>
+    <div className="members-layout">
       {/* Верхняя панель */}
-      <div style={{
-        display:'flex', justifyContent:'space-between', alignItems:'center',
-        padding:'8px 16px', borderBottom:'1px solid #e5e7eb', background:'#fff'
-      }}>
-        <h2
-          style={{ margin:0, fontSize:18, cursor:'pointer' }}
-          onClick={() => (window.location.href = '/')}
-        >
-          ← На главную
+      <div className="topbar">
+        <h2 className="topbar__title" onClick={() => (window.location.href = '/')}>
+          <span aria-hidden>←</span> На главную
         </h2>
         <ProfileMenu />
       </div>
 
-      {/* Контент: слева подразделения, справа таблица */}
-      <div style={{ display:'grid', gridTemplateColumns:'260px 1fr', height:'100%' }}>
+      {/* Контент */}
+      <div className="members-content">
         {/* LEFT: Departments */}
-        <div style={{ borderRight:'1px solid #e5e7eb', padding:12, overflow:'auto' }}>
-          <h3 style={{ marginTop:0 }}>Подразделения</h3>
-          <div style={{ display:'flex', gap:8, marginBottom:8 }}>
+        <aside className="side">
+          <h3>Подразделения</h3>
+
+          <div className="side__add">
             <input
+              className="input"
               value={newDepName}
               onChange={e => setNewDepName(e.target.value)}
               placeholder="Название подразделения"
-              style={{ flex:1 }}
             />
-            <button onClick={onAddDep}>+ Добавить</button>
+            <button className="btn btn--primary" onClick={onAddDep}>+ Добавить</button>
           </div>
 
-          <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-            <button
-              style={{
-                textAlign:'left', padding:'6px 8px',
-                background: currentDepId === null ? '#eef2ff' : 'transparent',
-                border:'1px solid #e5e7eb', borderRadius:6
-              }}
-              onClick={() => setCurrentDepId(null)}
-            >
-              Все подразделения
-            </button>
+          <div className="dep-list">
+            <div className={`dep-item dep-item--ghost ${currentDepId === null ? 'dep-item--active' : ''}`}>
+              <button
+                className="dep-item__title"
+                onClick={() => setCurrentDepId(null)}
+              >
+                Все подразделения
+              </button>
+            </div>
 
             {departments.map(d => (
-              <div key={d.id}
-                   style={{
-                     display:'flex', alignItems:'center', gap:6,
-                     border:'1px solid #e5e7eb', borderRadius:6, padding:'6px 8px',
-                     background: currentDepId === d.id ? '#eef2ff' : 'transparent'
-                   }}>
+              <div
+                key={d.id}
+                className={`dep-item ${currentDepId === d.id ? 'dep-item--active' : ''}`}
+              >
                 <button
-                  style={{ flex:1, textAlign:'left', background:'transparent', border:'none', cursor:'pointer' }}
+                  className="dep-item__title"
                   onClick={() => setCurrentDepId(d.id)}
                   title="Показать участников этого подразделения"
                 >
                   {d.name}
                 </button>
-                <button onClick={() => onRenameDep(d)} title="Переименовать">✏️</button>
-                <button onClick={() => onDeleteDep(d)} title="Удалить">🗑</button>
+                <button className="icon-btn" onClick={() => onRenameDep(d)} title="Переименовать">✏️</button>
+                <button className="icon-btn" onClick={() => onDeleteDep(d)} title="Удалить">🗑</button>
               </div>
             ))}
           </div>
-        </div>
+        </aside>
 
         {/* RIGHT: Members Table */}
-        <div style={{ padding:16, overflow:'auto' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+        <main className="main">
+          <div className="main__head">
             <div>
-              <h2 style={{ margin:0 }}>Участники</h2>
-              <div style={{ opacity:.7, fontSize:12 }}>
+              <h2 className="h2">Участники</h2>
+              <div className="muted">
                 {currentDepId
                   ? `Фильтр: ${depNameById(currentDepId)}`
                   : 'Фильтр: все подразделения'}
               </div>
             </div>
-            <button onClick={openAdd}>+ Добавить пользователя</button>
+            <button className="btn btn--primary" onClick={openAdd}>+ Добавить пользователя</button>
           </div>
 
-          <div style={{ border:'1px solid #e5e7eb', borderRadius:8, overflow:'hidden', background:'#fff' }}>
-            <table style={{ width:'100%', borderCollapse:'collapse' }}>
-              <thead style={{ background:'#f8fafc' }}>
+          <div className="card">
+            <table className="table">
+              <thead>
                 <tr>
                   <Th>ID</Th>
                   <Th>ФИО</Th>
                   <Th>Телефон</Th>
                   <Th>Почта</Th>
                   <Th>Подразделение</Th>
-                  <Th style={{ minWidth:220 }}>Функциональные обязанности</Th>
+                  <Th style={{ minWidth: 220 }}>Функциональные обязанности</Th>
                   <Th>Статус</Th>
                   <Th>Ред.</Th>
                 </tr>
               </thead>
               <tbody>
                 {membersFiltered.map(m => (
-                  <tr key={m.id} style={{ borderTop:'1px solid #f1f5f9' }}>
-                    <Td><code style={{ fontSize:12 }}>{m.uniqueId}</code></Td>
+                  <tr key={m.id}>
+                    <Td><code className="code">{m.uniqueId || '—'}</code></Td>
                     <Td>{m.fullName || '—'}</Td>
                     <Td>{m.phone || '—'}</Td>
                     <Td>{m.email || '—'}</Td>
@@ -220,9 +210,9 @@ export default function MembersPage() {
                         ? (m.responsibilities || []).join(', ')
                         : '—'}
                     </Td>
-                    <Td>{renderStatus(m.status)}</Td>
+                    <Td>{renderStatusChip(m.status)}</Td>
                     <Td>
-                      <button onClick={() => openEdit(m)}>Редактировать</button>
+                      <button className="btn btn--small" onClick={() => openEdit(m)}>Редактировать</button>
                     </Td>
                   </tr>
                 ))}
@@ -236,50 +226,41 @@ export default function MembersPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </main>
       </div>
 
       {/* Modal */}
       {modalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          style={{
-            position:'fixed', inset:0, background:'rgba(0,0,0,.25)',
-            display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000
-          }}
-          onClick={closeModal}
-        >
-          <div
-            style={{
-              width:'min(720px, 96vw)', background:'#fff', borderRadius:12,
-              border:'1px solid #e5e7eb', boxShadow:'0 20px 60px rgba(0,0,0,.2)',
-              padding:16
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-              <h3 style={{ margin:0 }}>{memberForm.id ? 'Редактировать участника' : 'Добавить участника'}</h3>
-              <button onClick={closeModal} title="Закрыть">✖</button>
+        <div className="modal" onClick={closeModal}>
+          <div className="modal__dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__head">
+              <h3 style={{ margin:0 }}>
+                {memberForm.id ? 'Редактировать участника' : 'Добавить участника'}
+              </h3>
+              <button className="icon-btn" onClick={closeModal} title="Закрыть">✖</button>
             </div>
 
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+            <div className="modal__grid">
               <input
+                className="input"
                 placeholder="ФИО"
                 value={memberForm.fullName}
                 onChange={e => setMemberForm(s => ({ ...s, fullName: e.target.value }))}
               />
               <input
+                className="input"
                 placeholder="Почта"
                 value={memberForm.email}
                 onChange={e => setMemberForm(s => ({ ...s, email: e.target.value }))}
               />
               <input
+                className="input"
                 placeholder="Телефон"
                 value={memberForm.phone}
                 onChange={e => setMemberForm(s => ({ ...s, phone: e.target.value }))}
               />
               <select
+                className="select"
                 value={memberForm.status}
                 onChange={e => setMemberForm(s => ({ ...s, status: e.target.value }))}
                 title="Статус приглашения / авторизации"
@@ -291,39 +272,41 @@ export default function MembersPage() {
               </select>
 
               <input
+                className="input"
                 placeholder="Уникальный ID (можно оставить пустым)"
                 value={memberForm.uniqueId}
                 onChange={e => setMemberForm(s => ({ ...s, uniqueId: e.target.value }))}
                 title="Если оставить пустым при создании — будет сгенерирован"
-                style={{ gridColumn:'1 / span 2' }}
+                style={{ gridColumn:'1 / -1' }}
               />
 
               <select
+                className="select"
                 value={memberForm.departmentId ?? ''}
                 onChange={e => setMemberForm(s => ({ ...s, departmentId: e.target.value || null }))}
                 title="Привязка к подразделению"
-                style={{ gridColumn:'1 / span 2' }}
+                style={{ gridColumn:'1 / -1' }}
               >
                 <option value="">Без подразделения</option>
                 {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
 
               <textarea
+                className="textarea"
                 placeholder="Функциональные обязанности (каждая с новой строки)"
                 value={memberForm.responsibilitiesText}
                 onChange={e => setMemberForm(s => ({ ...s, responsibilitiesText: e.target.value }))}
-                style={{ gridColumn:'1 / span 2', minHeight:120 }}
+                style={{ gridColumn:'1 / -1', minHeight:120 }}
               />
             </div>
 
-            <div style={{ display:'flex', justifyContent:'space-between', marginTop:12 }}>
+            <div className="modal__footer">
               {memberForm.id ? (
-                <button onClick={removeMember} style={{ color:'#dc2626' }}>Удалить</button>
+                <button className="btn btn--danger" onClick={removeMember}>Удалить</button>
               ) : <span />}
-
               <div style={{ display:'flex', gap:8 }}>
-                <button onClick={closeModal} style={{ background:'#f3f4f6' }}>Отмена</button>
-                <button onClick={saveMember}>
+                <button className="btn btn--ghost" onClick={closeModal}>Отмена</button>
+                <button className="btn btn--primary" onClick={saveMember}>
                   {memberForm.id ? 'Сохранить' : 'Добавить'}
                 </button>
               </div>
@@ -338,30 +321,17 @@ export default function MembersPage() {
 /* ——— helpers ——— */
 function Th({ children, style, ...rest }) {
   return (
-    <th
-      style={{
-        textAlign:'left', padding:'10px 12px', fontWeight:600, fontSize:13,
-        borderBottom:'1px solid #e5e7eb', ...style
-      }}
-      {...rest}
-    >
-      {children}
-    </th>
+    <th style={style} {...rest}>{children}</th>
   );
 }
 function Td({ children, style, ...rest }) {
   return (
-    <td
-      style={{ padding:'10px 12px', verticalAlign:'top', fontSize:13, ...style }}
-      {...rest}
-    >
-      {children}
-    </td>
+    <td style={style} {...rest}>{children}</td>
   );
 }
-function renderStatus(s) {
-  if (s === 'authorized') return 'авторизован';
-  if (s === 'pending') return 'отправлено, ждём';
-  if (s === 'invited') return 'приглашение отправить';
-  return '—';
+function renderStatusChip(s) {
+  if (s === 'authorized') return <span className="chip chip--authorized">авторизован</span>;
+  if (s === 'pending') return <span className="chip chip--pending">отправлено, ждём</span>;
+  if (s === 'invited') return <span className="chip chip--invited">приглашение отправить</span>;
+  return <span className="chip">—</span>;
 }

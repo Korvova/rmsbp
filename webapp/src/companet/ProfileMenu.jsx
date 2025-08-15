@@ -24,11 +24,11 @@ export default function ProfileMenu() {
   }, []);
 
 const items = [
-  { key: 'members', label: 'Участники', action: () => nav('/members') },
-  { key: 'my-tasks', label: 'Мои задачи' },
-  { key: 'settings', label: 'Настройки' },
-  { key: 'rights',   label: 'Права' },
-  { key: 'logout',   label: 'Выйти' },
+  { key: 'members', label: '👥Участники', action: () => nav('/members') },
+  { key: 'my-tasks', label: '🔲Мои задачи' },
+  { key: 'settings', label: '⚙️Настройки' },
+  { key: 'rights',   label: '🔐Права' },
+  { key: 'logout',   label: '🚪Выйти' },
 ];
 
   return (
