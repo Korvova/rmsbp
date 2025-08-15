@@ -89,6 +89,12 @@
   cursor: pointer;
 }
 
+
+
+
+
+
+
 /* ===== Modal ===== */
 .modal-backdrop{
   position: fixed; inset: 0; background: rgba(0,0,0,.35);
@@ -132,4 +138,15 @@
   pointer-events: none;  /* не мешает драгам и кликам */
   user-select: none;
   z-index: 1;
+}
+
+
+
+/* Новая пилюля — стадия */
+.stage-pill {
+  font-size: 12px; opacity: .85;
+  background: rgba(99,102,241,.08);           /* индиго намёк */
+  border: 1px dashed rgba(99,102,241,.25);
+  border-radius: 999px;
+  padding: 2px 8px;
 }

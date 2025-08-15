@@ -7,10 +7,23 @@ import './card.css';
 import './flame.css';
 import iconUrl from '../assets/icon.jpg';
 
+
+// Читабельные названия для дефолтных id стадий
+const STAGE_LABELS = {
+  backlog: 'Бэклог',
+  todo: 'В работу',
+  doing: 'В процессе',
+  done: 'Готово',
+  cancel: 'Отменено',
+  frozen: 'Заморожено',
+};
+
+
 export default function CardNode({ id, data }) {
   const {
     label, color, done, rule, status = 'pending',
     initials, avatarUrl, difficulty, taskType, group,
+    stage, stageLabel,                // ← добавили
     description = '',
     onTitle, onToggle, onDelete, onRuleChange,
     onCancel, onFreeze,
@@ -87,6 +100,9 @@ export default function CardNode({ id, data }) {
 
       <div className="meta-tags">
         <span className="type-pill">{taskType || 'Без типа'}</span>
+        <span className="stage-pill">
+          {stageLabel || STAGE_LABELS[stage] || stage || 'Без стадии'}
+        </span>
         <span className="group-pill">{group || 'Без группы'}</span>
       </div>
 

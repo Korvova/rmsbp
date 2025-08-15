@@ -22,6 +22,7 @@ import QuickMenu     from '../companet/QuickMenu';
 
 import { useParams, useNavigate } from 'react-router-dom';
 
+
 const NODE_TYPES = { card: CardNode };
 const EDGE_TYPES = { deletable: DeletableEdge };
 
@@ -65,6 +66,10 @@ function Canvas() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+   const [stages, setStages] = useState([]); 
+   const [loaded, setLoaded] = useState(false);  
+
+
 
   // фабрика узла с коллбэками
 const makeNode = useCallback(
@@ -126,7 +131,8 @@ const makeNode = useCallback(
 
 // загрузка ТОЛЬКО из текущей группы
 useEffect(() => {
-  const { nodes: n = [], edges: e = [] } = loadFlow(groupId);
+  setLoaded(false);
+   const { nodes: n = [], edges: e = [], stages: s = [] } = loadFlow(groupId);
   const fixed = n.map(node => ({
     ...node,
     data: {
@@ -137,9 +143,11 @@ useEffect(() => {
   }));
   setNodes(fixed.map(makeNode));
   setEdges(e);
+  setStages(Array.isArray(s) && s.length ? s : getDefaultStages()); // ← добавили
+
+  setLoaded(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [groupId]);
-
 
 
 
@@ -300,6 +308,7 @@ useEffect(() => {
         showIcon: false,
         group: groupId || '',
         groupId,
+        stage: 'backlog',
       },
     };
 
@@ -370,6 +379,9 @@ const pos = rf.screenToFlowPosition({ x: ev.clientX, y: ev.clientY });
 
          group: groupLabel,         // ← ИСПОЛЬЗУЕМ
       groupId,                   // ← id группы
+
+stage: 'backlog',
+
       },
     };
 
@@ -476,6 +488,7 @@ console.log('CREATE NODE (paneClick)', { groupLabel, groupId, data: raw.data });
         group: src.data.group || '',
         showIcon: !!src.data.showIcon,
         groupId: src.data.groupId || groupId,
+        stage: 'backlog',
 
       },
     };
@@ -535,6 +548,7 @@ const groupLabel = (draft.group?.trim() || groupId);
 
     group: groupLabel,   // ← ВАЖНО: метка для отображения
     groupId,             // ← id для фильтрации/сохранения
+    stage: 'backlog',
 
 
       },
@@ -574,8 +588,9 @@ console.log('CREATE NODE (connectEnd)', { groupLabel, groupId, data: raw.data })
     return () => window.removeEventListener('keydown', onKey);
   }, [composing]);
 
-  // persist — сохраняем в сторадж ТЕКУЩЕЙ группы
+  // persist — сохраняем в сторадж ТЕКУЩЕЙ группы (только после загрузки)
   useEffect(() => {
+    if (!loaded) return;               // ← защита от затирания при первом рендере
     const plain = nodes.map(({ data, ...n }) => ({
       ...n,
       data: {
@@ -596,10 +611,19 @@ console.log('CREATE NODE (connectEnd)', { groupLabel, groupId, data: raw.data })
         group: data.group || '',
         showIcon: !!data.showIcon,
         groupId,
+         stage: data.stage || 'backlog',
       },
     }));
-    saveFlow(groupId, { nodes: plain, edges });
-  }, [nodes, edges, groupId]);
+
+
+
+      // сохраняем текущие стадии из стейта
+    saveFlow(groupId, { nodes: plain, edges, stages });
+      }, [nodes, edges, stages, groupId, loaded]);
+
+
+
+
 
   // deps для RuleMenu
   const nodesView = useMemo(() =>
@@ -609,9 +633,14 @@ console.log('CREATE NODE (connectEnd)', { groupLabel, groupId, data: raw.data })
         edgeId: e.id,
         label: nodes.find(nn => nn.id === e.source)?.data.label || `Задача ${e.source}`,
       }));
-      return { ...n, data:{ ...n.data, deps } };
+      const stageId = n.data?.stage || stages[0]?.id || 'backlog';
+      const stageLabel = stages.find(s => s.id === stageId)?.name || stageId;
+      return { ...n, data:{ ...n.data, deps, stage: stageId, stageLabel } };
     }),
-  [nodes, edges]);
+  [nodes, edges, stages]);
+
+
+
 
   return (
     <>
@@ -626,8 +655,11 @@ console.log('CREATE NODE (connectEnd)', { groupLabel, groupId, data: raw.data })
           // если у тебя общий ключ — лучше зови специальный reset(groupId)
           // тут просто чистим локальный стейт:
           setNodes([]); setEdges([]);
-          saveFlow(groupId, { nodes: [], edges: [] });
+         saveFlow(groupId, { nodes: [], edges: [], stages }); // сохраняем текущие стадии
         }}
+
+ onKanban={() => navigate(`/groups/${groupId}/kanban`)}
+
       />
 
       <div
