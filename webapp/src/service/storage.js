@@ -34,12 +34,13 @@ export function loadFlow(groupId) {
    
 
 
-    const data = json ? JSON.parse(json) : { nodes: [], edges: [], stages: getDefaultStages() };
+   const data = json ? JSON.parse(json) : { nodes: [], edges: [], stages: getDefaultStages(), events: [] };
     if (!Array.isArray(data.stages) || data.stages.length === 0) data.stages = getDefaultStages();
+      if (!Array.isArray(data.events)) data.events = [];
     return data;
 
   } catch {
-   return { nodes: [], edges: [], stages: getDefaultStages() };
+   return { nodes: [], edges: [], stages: getDefaultStages(), events: [] };
   }
 }
 export function saveFlow(groupId, flow) {

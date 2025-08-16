@@ -116,6 +116,9 @@ const makeNode = useCallback(
       onDelete: (id) => { setNodes(ns => ns.filter(n => n.id !== id)); setEdges(es => es.filter(e => e.source !== id && e.target !== id)); },
       onRuleChange: (id, val) => setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, rule:val } } : n)),
       onOverdue: (id, val) => setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, overdue: !!val } } : n)),
+      onCalendarChange: (id, calendar) => setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, calendar: calendar || null } } : n)),
+
+
     },
   }),
   [setNodes, setEdges, groupId]
@@ -612,13 +615,20 @@ console.log('CREATE NODE (connectEnd)', { groupLabel, groupId, data: raw.data })
         showIcon: !!data.showIcon,
         groupId,
          stage: data.stage || 'backlog',
+          calendar: data.calendar || null,
       },
     }));
 
 
 
       // сохраняем текущие стадии из стейта
-    saveFlow(groupId, { nodes: plain, edges, stages });
+   
+    const prev = loadFlow(groupId);
+    const events = Array.isArray(prev?.events) ? prev.events : [];
+    saveFlow(groupId, { nodes: plain, edges, stages, events });
+
+
+
       }, [nodes, edges, stages, groupId, loaded]);
 
 
@@ -635,9 +645,33 @@ console.log('CREATE NODE (connectEnd)', { groupLabel, groupId, data: raw.data })
       }));
       const stageId = n.data?.stage || stages[0]?.id || 'backlog';
       const stageLabel = stages.find(s => s.id === stageId)?.name || stageId;
-      return { ...n, data:{ ...n.data, deps, stage: stageId, stageLabel } };
+
+
+
+
+      // форматируем строку календаря
+      let calendarLabel = '';
+      if (n.data?.calendar?.start && n.data?.calendar?.end) {
+        const fmt = new Intl.DateTimeFormat('ru-RU', {
+          day:'2-digit', month:'2-digit', year:'numeric',
+          hour:'2-digit', minute:'2-digit'
+        });
+        const s = fmt.format(new Date(n.data.calendar.start)).replace(', ', ': ');
+        const e = fmt.format(new Date(n.data.calendar.end)).replace(', ', ': ');
+        calendarLabel = `${s} — ${e}`;
+      }
+
+
+      return { ...n, data:{
+          ...n.data,
+          deps,
+          stage: stageId,
+          stageLabel,
+          calendarLabel,
+          onOpenCalendar: () => navigate(`/groups/${groupId}/calendar?task=${n.id}`),
+        } };
     }),
-  [nodes, edges, stages]);
+  [nodes, edges, stages, navigate, groupId]);
 
 
 
@@ -655,10 +689,11 @@ console.log('CREATE NODE (connectEnd)', { groupLabel, groupId, data: raw.data })
           // если у тебя общий ключ — лучше зови специальный reset(groupId)
           // тут просто чистим локальный стейт:
           setNodes([]); setEdges([]);
-         saveFlow(groupId, { nodes: [], edges: [], stages }); // сохраняем текущие стадии
+         saveFlow(groupId, { nodes: [], edges: [], stages: getDefaultStages(), events: loadFlow(groupId).events || [] });
         }}
 
  onKanban={() => navigate(`/groups/${groupId}/kanban`)}
+  onCalendar={() => navigate(`/groups/${groupId}/calendar`)}
 
       />
 

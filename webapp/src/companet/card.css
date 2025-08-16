@@ -150,3 +150,17 @@
   border-radius: 999px;
   padding: 2px 8px;
 }
+
+
+
+/* строка календаря над названием */
+.calendar-line{
+  font-size: 12px;
+  margin: 2px 0 6px;
+  opacity: .85;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.calendar-line:hover { text-decoration: underline; }

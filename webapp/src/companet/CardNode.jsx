@@ -23,7 +23,9 @@ export default function CardNode({ id, data }) {
   const {
     label, color, done, rule, status = 'pending',
     initials, avatarUrl, difficulty, taskType, group,
-    stage, stageLabel,                // ← добавили
+    stage, stageLabel,    
+    calendarLabel,
+    onOpenCalendar,   
     description = '',
     onTitle, onToggle, onDelete, onRuleChange,
     onCancel, onFreeze,
@@ -68,6 +70,16 @@ export default function CardNode({ id, data }) {
         pointerEvents: data.isPlaceholder ? 'none' : 'auto',
       }}
     >
+
+
+      {/* строка календаря */}
+      {calendarLabel && !data.isPlaceholder && (
+        <div className="calendar-line" title="Открыть в календаре" onClick={() => onOpenCalendar?.(id)}>
+          <span>📅</span>
+          <span>{calendarLabel}</span>
+        </div>
+      )}
+
 
 
 
@@ -116,6 +128,7 @@ export default function CardNode({ id, data }) {
         <button title="Описание" onClick={() => setDescOpen(true)}>📋</button>
         <button title="Уведомления">🔔</button>
         <button title="Комментарий">💬</button>
+        <button title="Календарь" onClick={() => onOpenCalendar?.(id)}>📅</button>
         <button title="Дедлайн">🚩</button>
 
         <RuleMenu

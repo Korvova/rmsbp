@@ -1,4 +1,4 @@
-export default function Toolbar({ onAdd, onReset, onKanban }) {
+export default function Toolbar({ onAdd, onReset, onKanban, onCalendar }) {
   return (
     <div style={{ position:'absolute', left:10, top:10, zIndex:10 }}>
       <button onClick={onAdd}>+🪪 Задача</button>
@@ -9,7 +9,7 @@ export default function Toolbar({ onAdd, onReset, onKanban }) {
   <button style={{ marginLeft:8 }}> +🤖 Чекеры  </button>
   <button style={{ marginLeft:8 }}> +🗂️ Хранилище  </button>
   <button style={{ marginLeft:8 }}> + 🗐 Документария </button>
-  <button style={{ marginLeft:8 }}> + 📅 Календарь</button>
+  <button style={{ marginLeft:8 }} onClick={onCalendar}> + 📅 Календарь</button>
   <button style={{ marginLeft:8 }}> + 💶 Бюджет</button>
   
 
