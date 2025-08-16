@@ -164,3 +164,35 @@
   cursor: pointer;
 }
 .calendar-line:hover { text-decoration: underline; }
+
+
+
+/* Режим фокуса: затемняем всё полотно вокруг выбранной карточки
+   без вычисления координат — одной гигантской тенью. */
+.focus-mode .react-flow__node.selected .card {
+  position: relative;
+  z-index: 60; /* над кликающей простынёй */
+  border-radius: 12px;
+  /* 1) Большая тень — это и есть «тёмный экран».
+     2) Синяя рамка и мягкая подсветка как у модалки. */
+  box-shadow:
+    0 0 0 9999px rgba(2, 6, 23, .55),
+    0 0 0 2px #60a5fa,
+    0 0 0 6px rgba(96, 165, 250, .25);
+}
+
+/* Прозрачная простыня поверх сцены, чтобы клик вне карточки закрывал фокус */
+.focus-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 55;             /* ниже .card (60), выше остального */
+  background: transparent; /* клики ловим, визуально ничего не рисуем */
+  border: 0;
+  cursor: default;
+}
+
+/* Чтобы остальная сцена не перехватывала клики в фокус-режиме */
+.focus-mode .react-flow__node { pointer-events: none; }
+.focus-mode .react-flow__node.selected { pointer-events: auto; }
+.focus-mode .react-flow__edge,
+.focus-mode .react-flow__pane { pointer-events: none; }
