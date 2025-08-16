@@ -1,5 +1,5 @@
 // src/page/CalendarPage.jsx
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
@@ -13,6 +13,7 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
 import { loadFlow, saveFlow } from '../service/storage';
+import '../companet/calendar.css';
 
 const locales = { ru };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
@@ -40,10 +41,9 @@ export default function CalendarPage() {
   const [edges]             = useState(initial.edges || []);
   const [stages]            = useState(initial.stages || []);
   const [events, setEvents] = useState(initial.events || []);
-
   useEffect(() => { saveFlow(groupId, { nodes, edges, stages, events }); }, [groupId, nodes, edges, stages, events]);
 
-  // === calendar control (view + date) ===
+  // === calendar control ===
   const defaultDate = useMemo(() => {
     if (!focusTaskId) return new Date();
     const ev = events.find(e => e.taskId === focusTaskId);
@@ -55,8 +55,8 @@ export default function CalendarPage() {
   useEffect(() => { setDate(defaultDate); }, [defaultDate]);
 
   // === rbc events ===
-  const rbcEvents = useMemo(() => {
-    return (events || []).map(e => {
+  const rbcEvents = useMemo(() =>
+    (events || []).map(e => {
       const task = nodes.find(n => n.id === e.taskId);
       return {
         id: e.id || e.taskId,
@@ -66,16 +66,41 @@ export default function CalendarPage() {
         allDay: false,
         resource: { taskId: e.taskId },
       };
-    });
-  }, [events, nodes]);
+    }),
+  [events, nodes]);
 
   const eventPropGetter = (event) => {
     const task = nodes.find(n => n.id === event.resource?.taskId);
-    const bg = colorForStatus(task);
-    return { style: { backgroundColor: bg, border: '1px solid rgba(0,0,0,.15)', color: '#0f172a' } };
+    const selected = event.resource?.taskId === focusTaskId;
+    return {
+      style: {
+        backgroundColor: colorForStatus(task),
+        border: '1px solid rgba(0,0,0,.15)',
+        color: '#0f172a',
+        // лёгкий акцент выбранному (поверх — ещё рамка в спотлайте)
+        boxShadow: selected ? '0 0 0 2px rgba(96,165,250,.35)' : undefined,
+      },
+      className: selected ? 'cal-ev cal-ev--selected' : 'cal-ev',
+    };
   };
 
-  // === modal state (replace prompt) ===
+  // автоскролл к выбранному событию (после рендера)
+  useEffect(() => {
+    if (!focusTaskId) return;
+    const t = setTimeout(() => {
+      const inner = document.querySelector(`.calendar-event[data-task-id="${focusTaskId}"]`);
+      const outer = inner?.closest('.rbc-event') || inner;
+      outer?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 0);
+    return () => clearTimeout(t);
+  }, [focusTaskId, rbcEvents, view, date]);
+
+  // снять фокус (= убрать ?task)
+  const clearFocus = useCallback(() => {
+    navigate(`/groups/${groupId}/calendar`, { replace: true });
+  }, [groupId, navigate]);
+
+  // === modal state ===
   const [pickerOpen, setPickerOpen] = useState(false);
   const [slotRange, setSlotRange]   = useState({ start: null, end: null });
   const [query, setQuery]           = useState('');
@@ -91,61 +116,40 @@ export default function CalendarPage() {
 
   const openPicker = (start, end) => {
     setSlotRange({ start, end });
-    setQuery('');
-    setSelectedTaskId('');
-    setNewTitle('');
+    setQuery(''); setSelectedTaskId(''); setNewTitle('');
     setPickerOpen(true);
   };
   const closePicker = () => setPickerOpen(false);
 
-  // slot select — либо авто-привязка (если пришли из карточки), либо модалка
   const onSelectSlot = ({ start, end }) => {
-    if (focusTaskId) {
-      attachEvent(focusTaskId, start, end);
-      return;
-    }
+    if (focusTaskId) { attachEvent(focusTaskId, start, end); return; }
     openPicker(start, end);
   };
 
-  // event click: открыть карточку на схеме (↗), удаление делаем в кастомном EventItem
   const goToCard = (taskId) => navigate(`/groups/${groupId}?task=${taskId}`);
 
-  // drag / resize
-  const onEventDrop = ({ event, start, end }) => {
-    const taskId = event.resource?.taskId;
-    if (!taskId) return;
-    attachEvent(taskId, start, end);
-  };
-  const onEventResize = ({ event, start, end }) => {
-    const taskId = event.resource?.taskId;
-    if (!taskId) return;
-    attachEvent(taskId, start, end);
-  };
+  const onEventDrop   = ({ event, start, end }) => { const id = event.resource?.taskId; if (id) attachEvent(id, start, end); };
+  const onEventResize = ({ event, start, end }) => { const id = event.resource?.taskId; if (id) attachEvent(id, start, end); };
 
-  // central attach
   function attachEvent(taskId, start, end) {
     setEvents(prev => {
       const other = prev.filter(e => e.taskId !== taskId);
       return [...other, { id: taskId, taskId, start, end }];
     });
-    setNodes(prev => prev.map(n => n.id === taskId
-      ? ({ ...n, data:{ ...n.data, calendar:{ start, end } } })
-      : n
-    ));
+    setNodes(prev => prev.map(n => n.id === taskId ? ({ ...n, data:{ ...n.data, calendar:{ start, end } } }) : n));
     closePicker();
   }
-
   const removeEvent = (taskId) => {
     setEvents(prev => prev.filter(e => e.taskId !== taskId));
     setNodes(prev => prev.map(n => n.id === taskId ? ({ ...n, data:{ ...n.data, calendar:null } }) : n));
   };
 
-  // кастомный рендер события с кнопками ↗ и 🗑 (с подтверждением)
   const EventItem = ({ event }) => {
-    const task = nodes.find(n => n.id === event.resource?.taskId);
     const taskId = event.resource?.taskId;
     return (
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
+      <div className="calendar-event"
+           data-task-id={taskId}
+           style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
         <span
           style={{ cursor:'pointer', textDecoration:'underline' }}
           title="Открыть карточку на схеме"
@@ -163,9 +167,7 @@ export default function CalendarPage() {
             title="Удалить событие"
             onClick={(e) => {
               e.stopPropagation();
-              if (!task) return;
-              const ok = confirm(`Удалить привязку события к задаче «${task.data?.label || 'Задача'}»?\nСобытие будет снято с календаря.`);
-              if (ok) removeEvent(taskId);
+              if (confirm(`Удалить привязку события «${event.title}»?`)) removeEvent(taskId);
             }}
             style={{ background:'transparent', border:'none', cursor:'pointer' }}
           >🗑</button>
@@ -220,7 +222,16 @@ export default function CalendarPage() {
         />
       </DndProvider>
 
-      {/* === Modal: выбрать задачу / создать новую === */}
+      {/* ——— Spotlight поверх календаря ——— */}
+      {!!focusTaskId && (
+        <FocusSpotlight
+          taskId={focusTaskId}
+          onClose={clearFocus}
+          deps={[view, date, rbcEvents.length]}
+        />
+      )}
+
+      {/* === Modal: выбрать/создать задачу === */}
       {pickerOpen && (
         <div
           style={{
@@ -293,9 +304,7 @@ export default function CalendarPage() {
                   style={{ width:'100%', padding:'8px 10px', border:'1px solid #e5e7eb', borderRadius:8, marginBottom:8 }}
                 />
                 <div style={{ fontSize:12, opacity:.75, marginBottom:8 }}>
-                  Диапазон: {slotRange.start ? format(slotRange.start, 'dd.MM.yyyy HH:mm') : '—'}
-                  {' '}—{' '}
-                  {slotRange.end ? format(slotRange.end, 'dd.MM.yyyy HH:mm') : '—'}
+                  Диапазон: {slotRange.start ? format(slotRange.start, 'dd.MM.yyyy HH:mm') : '—'} — {slotRange.end ? format(slotRange.end, 'dd.MM.yyyy HH:mm') : '—'}
                 </div>
                 <button
                   onClick={createAndAttach}
@@ -315,6 +324,87 @@ export default function CalendarPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ——— “дырявый” спотлайт вокруг события календаря ———
+function FocusSpotlight({ taskId, onClose, deps = [] }) {
+  const [rect, setRect] = useState(null);
+
+  const compute = useCallback(() => {
+    if (!taskId) { setRect(null); return; }
+    const inner = document.querySelector(`.calendar-event[data-task-id="${taskId}"]`);
+    if (!inner) { setRect(null); return; }
+    const outer = inner.closest('.rbc-event') || inner;
+    const r = outer.getBoundingClientRect();
+    setRect({ x: r.left, y: r.top, w: r.width, h: r.height });
+  }, [taskId]);
+
+  useEffect(() => {
+    // первичный расчёт + после макета
+    compute();
+    const raf = requestAnimationFrame(compute);
+    const t = setTimeout(compute, 50);
+
+    // ресайз окна
+    const onResize = () => compute();
+    window.addEventListener('resize', onResize);
+
+    // скролл внутри календаря
+    const scrollers = Array.from(document.querySelectorAll('.rbc-time-content, .rbc-month-view, .rbc-agenda-view'));
+    scrollers.forEach(s => s.addEventListener('scroll', onResize, { passive: true }));
+
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(t);
+      window.removeEventListener('resize', onResize);
+      scrollers.forEach(s => s.removeEventListener('scroll', onResize));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compute, taskId, ...deps]);
+
+  if (!rect) return null;
+
+  const pad = 10;
+  const x = Math.max(0, rect.x - pad);
+  const y = Math.max(0, rect.y - pad);
+  const w = rect.w + pad * 2;
+  const h = rect.h + pad * 2;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  const dim = { position:'fixed', background:'rgba(2,6,23,.55)', zIndex: 9999 };
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:9999, pointerEvents:'auto' }}>
+      {/* 4 тёмных зоны */}
+      <div onClick={onClose} style={{ ...dim, left:0, top:0, width:'100vw', height:y }} />
+      <div onClick={onClose} style={{ ...dim, left:0, top:y+h, width:'100vw', height: Math.max(0, vh - (y+h)) }} />
+      <div onClick={onClose} style={{ ...dim, left:0, top:y, width:x, height:h }} />
+      <div onClick={onClose} style={{ ...dim, left:x+w, top:y, width: Math.max(0, vw - (x+w)), height:h }} />
+
+      {/* подсветка рамкой */}
+      <div
+        style={{
+          position:'fixed',
+          left:x, top:y, width:w, height:h,
+          border:'2px solid #60a5fa',
+          borderRadius:12,
+          boxShadow:'0 0 0 6px rgba(96,165,250,.25)',
+          zIndex:10000,
+          pointerEvents:'none'
+        }}
+      />
+      {/* кликабельная “дырка”, чтобы тоже закрывать */}
+      <button
+        onClick={onClose}
+        title="Снять фокус"
+        style={{
+          position:'fixed', left:x, top:y, width:w, height:h,
+          background:'transparent', border:'none', zIndex:10001, cursor:'default'
+        }}
+      />
     </div>
   );
 }
