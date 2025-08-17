@@ -33,7 +33,7 @@ export default function CardNode({ id, data }) {
     deps, selectedDeps, onToggleDep,
     cancelPolicy, cancelSelectedDeps, onToggleCancelDep,
 
-
+  onOpenTask,
 
 
     onDescription,
@@ -70,6 +70,21 @@ export default function CardNode({ id, data }) {
         pointerEvents: data.isPlaceholder ? 'none' : 'auto',
       }}
     >
+
+
+
+  {/* Кнопка "полная задача" над карточкой */}
+      {!data.isPlaceholder && (
+        <button
+          className="open-task-btn"
+          title="Открыть полную карточку"
+          onClick={(e) => { e.stopPropagation(); onOpenTask?.(id); }}
+        >
+          🗂
+        </button>
+      )}
+
+
 
 
       {/* строка календаря */}

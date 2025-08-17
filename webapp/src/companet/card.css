@@ -196,3 +196,41 @@
 .focus-mode .react-flow__node.selected { pointer-events: auto; }
 .focus-mode .react-flow__edge,
 .focus-mode .react-flow__pane { pointer-events: none; }
+
+
+
+/* Кнопка открытия полной карточки */
+.open-task-btn{
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.15);
+  box-shadow: 0 6px 18px rgba(2,6,23,.18);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+}
+.open-task-btn:hover{ transform: translateY(-1px); }
+
+/* узел React Flow не должен клипать содержимое */
+.react-flow__node,
+.react-flow__node-default {
+  overflow: visible !important;
+}
+
+/* иконку поднимем выше всего, что рисует карточка/спотлайт */
+.card-icon {
+  z-index: 61 !important;  /* у .card в фокусе z-index:60 */
+  top: -64px;              /* если -100 было слишком высоко */
+}
+
+/* чтобы кнопка "полная карточка" гарантированно была кликабельной */
+.open-task-btn { z-index: 62 !important; }
+
+

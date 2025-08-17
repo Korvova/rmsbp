@@ -19,11 +19,18 @@ import CardNode      from '../companet/CardNode';
 import Toolbar       from '../companet/Toolbar';
 import DeletableEdge from '../companet/DeletableEdge';
 import QuickMenu     from '../companet/QuickMenu';
+import TaskModal from '../companet/TaskModal';
 
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 
 const NODE_TYPES = { card: CardNode };
 const EDGE_TYPES = { deletable: DeletableEdge };
+
+
+
+
+
+
 
 const getDefaultStages = () => ([
   { id:'backlog', name:'Бэклог' },
@@ -77,6 +84,40 @@ function Canvas() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [stages, setStages] = useState([]);
   const [loaded, setLoaded] = useState(false);
+
+
+
+
+
+
+// ✅ ТЕПЕРЬ внутри Canvas — так правильно
+const [detailsId, setDetailsId] = useState(null);
+
+const detailsTask = useMemo(
+  () => nodes.find(n => n.id === detailsId) || null,
+  [nodes, detailsId]
+);
+
+const updateDetails = useCallback((patch) => {
+  if (!detailsId) return;
+  setNodes(ns => ns.map(n =>
+    n.id === detailsId ? ({ ...n, data: { ...n.data, ...patch } }) : n
+  ));
+}, [detailsId, setNodes]);
+
+const deleteDetails = useCallback(() => {
+  if (!detailsId) return;
+  setNodes(ns => ns.filter(n => n.id !== detailsId));
+  setEdges(es => es.filter(e => e.source !== detailsId && e.target !== detailsId));
+  setDetailsId(null);
+}, [detailsId, setNodes, setEdges]);
+
+
+
+
+
+
+
 
   const makeNode = useCallback(
     (raw) => ({
@@ -613,6 +654,9 @@ function Canvas() {
         edgeId: e.id,
         label: nodes.find(nn => nn.id === e.source)?.data.label || `Задача ${e.source}`,
       }));
+
+
+
       const stageId = n.data?.stage || stages[0]?.id || 'backlog';
       const stageLabel = stages.find(s => s.id === stageId)?.name || stageId;
 
@@ -636,6 +680,8 @@ function Canvas() {
           stageLabel,
           calendarLabel,
           onOpenCalendar: () => navigate(`/groups/${groupId}/calendar?task=${n.id}`),
+           onOpenTask: () => setDetailsId(n.id),
+
         }
       };
     }),
@@ -690,6 +736,23 @@ function Canvas() {
             : n.data.done ? '#8BC34A' : n.data.color } />
           <Background />
         </ReactFlow>
+
+
+
+<TaskModal
+  open={!!detailsId}
+  task={detailsTask}
+  stages={stages}
+  onClose={() => setDetailsId(null)}
+  onChange={updateDetails}
+  onDelete={deleteDetails}
+  onOpenCalendar={() => {
+    if (detailsId) navigate(`/groups/${groupId}/calendar?task=${detailsId}`);
+  }}
+/>
+
+
+
 
         {/* Прозрачная «простыня» — клик вне карточки снимает фокус */}
         {focusId && (
