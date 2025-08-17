@@ -1,143 +1,259 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import './taskmodal.css';
 
 export default function TaskModal({
   open,
   task,
   stages = [],
   onClose,
-  onChange,          // (patch) => void
-  onDelete,          // () => void
-  onOpenCalendar,    // () => void
+  onChange,       // (patch) => void
+  onDelete,       // () => void
+  onOpenCalendar, // () => void
 }) {
-  if (!open || !task) return null;
-  const d = task.data || {};
+  // хуки всегда вызываем (для стабильного порядка)
+  const [activePanel, setActivePanel] = useState(null); // 'comments'|'people'|'settings'|'watch'|null
+  const [commentText, setCommentText] = useState('');
 
   useEffect(() => {
+    if (!open) return;
     const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [open, onClose]);
 
-  const wrap = { position:'fixed', inset:0, background:'rgba(2,6,23,.45)', zIndex:80, display:'grid', placeItems:'center' };
-  const box  = { width:'min(820px, 96vw)', background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, boxShadow:'0 30px 80px rgba(2,6,23,.35)' };
-  const head = { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', borderBottom:'1px solid #eef2f7' };
-  const body = { display:'grid', gap:12, gridTemplateColumns:'1fr 1fr', padding:14 };
-  const foot = { display:'flex', justifyContent:'space-between', padding:'12px 14px', borderTop:'1px solid #eef2f7' };
-  const input = { width:'100%', padding:'8px 10px', border:'1px solid #e5e7eb', borderRadius:8 };
+  if (!open || !task) return null;
+
+  const d = task.data || {};
+  const STATUS_ITEMS = [
+    { key: 'pending',   label: 'Новая' },
+    { key: 'working',   label: 'В работе' },
+    { key: 'review',    label: 'Ждет' },
+    { key: 'done',      label: 'Готово' },
+    { key: 'deferred',  label: 'Отложено' },
+    { key: 'declined',  label: 'Отклонено' },
+  ];
+
+  const togglePanel = (id) => setActivePanel(cur => (cur === id ? null : id));
+
+  const addComment = () => {
+    const t = commentText.trim();
+    if (!t) return;
+    const next = [...(d.comments || []), { id: crypto?.randomUUID?.() ?? String(Date.now()), text: t, ts: Date.now() }];
+    onChange?.({ comments: next });
+    setCommentText('');
+  };
 
   return (
-    <div style={wrap} onClick={onClose}>
-      <div style={box} onClick={(e) => e.stopPropagation()}>
-        <div style={head}>
-          <div style={{fontWeight:700}}>Задача</div>
-          <div style={{display:'flex', gap:8}}>
-            <button title="Открыть в календаре" onClick={onOpenCalendar}>📅</button>
-            <button title="Удалить" onClick={onDelete}>🗑</button>
-            <button title="Закрыть" onClick={onClose}>✖</button>
+    <div className="tm-wrap" onClick={onClose}>
+      <div className="tm-dialog" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="tm-head">
+          <div className="tm-title">Задача</div>
+          <div className="tm-actions">
+            <button className="tm-icon" title="Открыть в календаре" onClick={onOpenCalendar}>📅</button>
+            <button className="tm-icon" title="Удалить" onClick={onDelete}>🗑</button>
+            <button className="tm-icon" title="Закрыть" onClick={onClose}>✖</button>
           </div>
         </div>
 
-        <div style={body}>
-          <div style={{gridColumn:'1 / -1'}}>
-            <label style={{fontSize:12, opacity:.7}}>Название</label>
-            <input
-              style={input}
-              value={d.label || ''}
-              onChange={(e) => onChange?.({ label: e.target.value })}
-            />
-          </div>
-
-          <div>
-            <label style={{fontSize:12, opacity:.7}}>Статус</label>
-            <select
-              style={input}
-              value={d.status || 'pending'}
-              onChange={(e) => onChange?.({ status: e.target.value })}
-            >
-              <option value="pending">pending</option>
-              <option value="working">working</option>
-              <option value="done">done</option>
-              <option value="cancel">cancel</option>
-              <option value="frozen">frozen</option>
-            </select>
-          </div>
-
-          <div>
-            <label style={{fontSize:12, opacity:.7}}>Сложность</label>
-            <input
-              style={{...input, padding:'6px 10px'}}
-              type="range" min={0} max={10} step={1}
-              value={typeof d.difficulty === 'number' ? d.difficulty : 0}
-              onChange={(e) => onChange?.({ difficulty: Number(e.target.value) })}
-            />
-          </div>
-
-          <div>
-            <label style={{fontSize:12, opacity:.7}}>Тип</label>
-            <input
-              style={input}
-              value={d.taskType || ''}
-              onChange={(e) => onChange?.({ taskType: e.target.value })}
-            />
-          </div>
-
-          <div>
-            <label style={{fontSize:12, opacity:.7}}>Стадия</label>
-            <select
-              style={input}
-              value={d.stage || stages[0]?.id || 'backlog'}
-              onChange={(e) => onChange?.({ stage: e.target.value })}
-            >
-              {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label style={{fontSize:12, opacity:.7}}>Группа</label>
-            <input
-              style={input}
-              value={d.group || ''}
-              onChange={(e) => onChange?.({ group: e.target.value })}
-            />
-          </div>
-
-          <div style={{gridColumn:'1 / -1'}}>
-            <label style={{fontSize:12, opacity:.7}}>Описание</label>
-            <textarea
-              style={{...input, minHeight:140, resize:'vertical'}}
-              value={d.description || ''}
-              onChange={(e) => onChange?.({ description: e.target.value })}
-            />
-          </div>
-
-          <div>
-            <label style={{fontSize:12, opacity:.7}}>Инициалы (аватар)</label>
-            <input
-              style={input}
-              value={d.initials || ''}
-              onChange={(e) => onChange?.({ initials: e.target.value })}
-            />
-          </div>
-
-          <div>
-            <label style={{fontSize:12, opacity:.7}}>Просрочено</label>
-            <div>
+        {/* Внутренняя «узкая» колонка для гармоничной ширины полей */}
+        <div className="tm-inner">
+          <div className="tm-grid">
+            <div className="tm-col-span-2 tm-field">
+              <label>Название</label>
               <input
-                type="checkbox"
-                checked={!!d.overdue}
-                onChange={(e) => onChange?.({ overdue: e.target.checked })}
-              /> <span style={{fontSize:12}}>показать “огонь”</span>
+                className="tm-input"
+                value={d.label || ''}
+                onChange={(e) => onChange?.({ label: e.target.value })}
+              />
+            </div>
+
+            <div className="tm-col-span-2 tm-field">
+              <label>Описание</label>
+              <textarea
+                className="tm-textarea"
+                value={d.description || ''}
+                onChange={(e) => onChange?.({ description: e.target.value })}
+              />
+            </div>
+
+            <div className="tm-col-span-2 tm-field">
+              <label>Ответственный</label>
+              <input
+                className="tm-input"
+                placeholder="ФИО"
+                value={d.responsible || ''}
+                onChange={(e) => onChange?.({ responsible: e.target.value })}
+              />
+            </div>
+
+            <div className="tm-field tm-field--range">
+              <label>Сложность</label>
+              <input
+                className="tm-input"
+                type="range" min={0} max={10} step={1}
+                value={typeof d.difficulty === 'number' ? d.difficulty : 0}
+                onChange={(e) => onChange?.({ difficulty: Number(e.target.value) })}
+              />
+            </div>
+
+            <div className="tm-field">
+              <label>Стадия</label>
+              <select
+                className="tm-input"
+                value={d.stage || stages[0]?.id || 'backlog'}
+                onChange={(e) => onChange?.({ stage: e.target.value })}
+              >
+                {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+
+            <div className="tm-col-span-2 tm-field">
+              <label>Статус</label>
+              <div className="tm-status-row">
+                {STATUS_ITEMS.map(s => (
+                  <button
+                    key={s.key}
+                    className={`tm-chip ${d.status === s.key ? 'is-active' : ''}`}
+                    onClick={() => onChange?.({ status: s.key })}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="tm-foot">
+            <div className="tm-id">ID: {task.id}</div>
+            <div className="tm-foot-actions">
+              <button className="tm-btn" onClick={onOpenCalendar}>Открыть календарь</button>
+              <button className="tm-btn tm-btn--primary" onClick={onClose}>Готово</button>
             </div>
           </div>
         </div>
 
-        <div style={foot}>
-          <div style={{fontSize:12, opacity:.7}}>
-            ID: {task.id}
+        {/* Боковые круглые кнопки */}
+        <div className={`tm-side ${activePanel ? 'tm-side--inset' : ''}`}>
+          <button
+            className={`tm-side__btn ${activePanel === 'watch' ? 'is-active' : ''}`}
+            title="Наблюдать"
+            onClick={() => togglePanel('watch')}
+          >👁️</button>
+
+          <button
+            className={`tm-side__btn ${activePanel === 'comments' ? 'is-active' : ''}`}
+            title="Комментарии"
+            onClick={() => togglePanel('comments')}
+          >💬</button>
+
+          <button
+            className={`tm-side__btn ${activePanel === 'settings' ? 'is-active' : ''}`}
+            title="Настройки"
+            onClick={() => togglePanel('settings')}
+          >⚙️</button>
+
+          <button
+            className={`tm-side__btn ${activePanel === 'people' ? 'is-active' : ''}`}
+            title="Участники"
+            onClick={() => togglePanel('people')}
+          >👥</button>
+        </div>
+
+        {/* Правая выезжающая плашка */}
+        <div className={`tm-drawer ${activePanel ? 'is-open' : ''}`}>
+          <div className="tm-drawer__head">
+            <div className="tm-drawer__title">
+              {activePanel === 'comments' && 'Комментарии'}
+              {activePanel === 'people'   && 'Участники'}
+              {activePanel === 'settings' && 'Настройки'}
+              {activePanel === 'watch'    && 'Наблюдать'}
+            </div>
+            <button className="tm-icon" onClick={() => setActivePanel(null)}>✖</button>
           </div>
-          <div style={{display:'flex', gap:8}}>
-            <button onClick={onOpenCalendar}>Открыть календарь</button>
-            <button onClick={onClose}>Готово</button>
+
+          <div className="tm-drawer__body">
+            {activePanel === 'comments' && (
+              <div className="tm-comments">
+                {!(d.comments?.length) ? (
+                  <div className="tm-empty">Комментариев пока нет.</div>
+                ) : (
+                  <ul style={{ paddingLeft: 16, marginTop: 0 }}>
+                    {d.comments.map(c => (
+                      <li key={c.id} style={{ marginBottom: 8 }}>
+                        <div className="tm-muted" style={{ fontSize: 12 }}>
+                          {new Date(c.ts).toLocaleString()}
+                        </div>
+                        <div>{c.text}</div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <textarea
+                  className="tm-textarea"
+                  placeholder="Напишите комментарий…"
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                />
+                <button className="tm-btn tm-btn--primary" onClick={addComment}>Отправить</button>
+
+                <div className="tm-hint">Двойной клик для создания задачи</div>
+              </div>
+            )}
+
+            {activePanel === 'people' && (
+              <div className="tm-people">
+                <h4>Постановщик</h4>
+                <ul><li>{d.creator || 'Неизвестно'}</li></ul>
+
+                <h4>Наблюдатели</h4>
+                {Array.isArray(d.observers) && d.observers.length > 0
+                  ? <ul>{d.observers.map((o,i) => <li key={i}>{o}</li>)}</ul>
+                  : <div className="tm-muted">Нет наблюдателей</div>
+                }
+
+                <h4>Соисполнители</h4>
+                {Array.isArray(d.accomplices) && d.accomplices.length > 0
+                  ? <ul>{d.accomplices.map((o,i) => <li key={i}>{o}</li>)}</ul>
+                  : <div className="tm-muted">Нет соисполнителей</div>
+                }
+              </div>
+            )}
+
+            {activePanel === 'settings' && (
+              <div>
+                <div className="tm-field">
+                  <label>Просрочено</label>
+                  <div className="tm-switch">
+                    <input
+                      type="checkbox"
+                      checked={!!d.overdue}
+                      onChange={(e) => onChange?.({ overdue: e.target.checked })}
+                    />
+                    <span className="tm-muted">показывать «огонь» на карточке</span>
+                  </div>
+                </div>
+
+                <div className="tm-field">
+                  <label>Показывать иконку над карточкой</label>
+                  <div className="tm-switch">
+                    <input
+                      type="checkbox"
+                      checked={!!d.showIcon}
+                      onChange={(e) => onChange?.({ showIcon: e.target.checked })}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activePanel === 'watch' && (
+              <div>
+                <div className="tm-muted">Здесь можно будет включать уведомления/наблюдение.</div>
+              </div>
+            )}
           </div>
         </div>
       </div>
