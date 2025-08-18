@@ -1,6 +1,19 @@
 import { useEffect, useState } from 'react';
 import './taskmodal.css';
 
+function formatMoney(n){
+  const v = Number(n || 0);
+  return new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+}
+function formatRest(budgetId, budgets, spentMap){
+  if (!budgetId) return '—';
+  const b = (budgets || []).find(x => x.id === budgetId);
+  if (!b) return '—';
+  const spent = Number(spentMap?.[budgetId] || 0);
+  const rest = Number(b.amount || 0) - spent;
+  return `${formatMoney(rest)} (из ${formatMoney(b.amount)})`;
+}
+
 export default function TaskModal({
   open,
   task,
@@ -9,6 +22,8 @@ export default function TaskModal({
   onChange,       // (patch) => void
   onDelete,       // () => void
   onOpenCalendar, // () => void
+  budgets = [],
+  spentByBudget = {},
 }) {
   // хуки всегда вызываем (для стабильного порядка)
   const [activePanel, setActivePanel] = useState(null); // 'comments'|'people'|'settings'|'watch'|null
@@ -108,6 +123,35 @@ export default function TaskModal({
               </select>
             </div>
 
+            {/* Бюджет и затраты */}
+            <div className="tm-field">
+              <label>Статья бюджета</label>
+              <select
+                className="tm-input"
+                value={d.budgetId || ''}
+                onChange={(e) => onChange?.({ budgetId: e.target.value })}
+              >
+                <option value="">— не выбрано</option>
+                {(budgets || []).map(b => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+              <div className="tm-muted" style={{ marginTop:6 }}>
+                Остаток по статье: {formatRest(d.budgetId, budgets, spentByBudget)}
+              </div>
+            </div>
+
+            <div className="tm-field">
+              <label>Затраты</label>
+              <input
+                className="tm-input"
+                type="number" min="0" step="0.01"
+                value={typeof d.expense === 'number' || d.expense ? d.expense : ''}
+                onChange={(e) => onChange?.({ expense: Number(e.target.value || 0) })}
+                placeholder="0.00"
+              />
+            </div>
+
             <div className="tm-col-span-2 tm-field">
               <label>Статус</label>
               <div className="tm-status-row">
@@ -142,8 +186,6 @@ export default function TaskModal({
             onClick={() => togglePanel('watch')}
           >👁️</button>
 
-
-
           <button
             className={`tm-side__btn ${activePanel === 'settings' ? 'is-active' : ''}`}
             title="Настройки"
@@ -155,19 +197,13 @@ export default function TaskModal({
             title="Участники"
             onClick={() => togglePanel('people')}
           >👥</button>
-       
-
-
 
           <button
             className={`tm-side__btn ${activePanel === 'comments' ? 'is-active' : ''}`}
             title="Комментарии"
             onClick={() => togglePanel('comments')}
           >💬</button>
-
-
-           </div>
-
+        </div>
 
         {/* Правая выезжающая плашка */}
         <div className={`tm-drawer ${activePanel ? 'is-open' : ''}`}>

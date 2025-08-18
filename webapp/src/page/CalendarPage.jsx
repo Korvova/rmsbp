@@ -41,7 +41,15 @@ export default function CalendarPage() {
   const [edges]             = useState(initial.edges || []);
   const [stages]            = useState(initial.stages || []);
   const [events, setEvents] = useState(initial.events || []);
-  useEffect(() => { saveFlow(groupId, { nodes, edges, stages, events }); }, [groupId, nodes, edges, stages, events]);
+
+
+useEffect(() => {
+  const prev = loadFlow(groupId);
+  const budgets = Array.isArray(prev?.budgets) ? prev.budgets : [];
+  saveFlow(groupId, { nodes, edges, stages, events, budgets });
+}, [groupId, nodes, edges, stages, events]);
+
+
 
   // === calendar control ===
   const defaultDate = useMemo(() => {

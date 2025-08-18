@@ -83,6 +83,9 @@ function Canvas() {
 
   const [showCheckers, setShowCheckers] = useState(false);
 
+  // +++ бюджетные статьи
+  const [budgets, setBudgets] = useState([]);
+
   // таймеры для чекера "at-datetime"
   const timersRef = useRef({}); // { [nodeId]: timeoutId }
 
@@ -104,6 +107,18 @@ function Canvas() {
     setEdges(es => es.filter(e => e.source !== detailsId && e.target !== detailsId));
     setDetailsId(null);
   }, [detailsId, setNodes, setEdges]);
+
+  // суммарные траты по статьям бюджета
+  const spentByBudget = useMemo(() => {
+    const acc = {};
+    for (const n of nodes) {
+      const bid = n.data?.budgetId || '';
+      const val = Number(n.data?.expense || 0);
+      if (!bid || !Number.isFinite(val)) continue;
+      acc[bid] = (acc[bid] || 0) + val;
+    }
+    return acc;
+  }, [nodes]);
 
   const makeNode = useCallback(
     (raw) => ({
@@ -158,7 +173,7 @@ function Canvas() {
   // загрузка диаграммы текущей группы
   useEffect(() => {
     setLoaded(false);
-    const { nodes: n = [], edges: e = [], stages: s = [] } = loadFlow(groupId);
+    const { nodes: n = [], edges: e = [], stages: s = [], budgets: b = [] } = loadFlow(groupId);
     const fixed = n.map(node => ({
       ...node,
       data: {
@@ -170,6 +185,7 @@ function Canvas() {
     setNodes(fixed.map(makeNode));
     setEdges(e);
     setStages(Array.isArray(s) && s.length ? s : getDefaultStages());
+    setBudgets(Array.isArray(b) ? b : []);
     setLoaded(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupId]);
@@ -287,33 +303,23 @@ function Canvas() {
     });
   }, [nodes]);
 
-
-
-
-  // правило afterAny → working  (по статусу, не по data.done)
-
-useEffect(() => {
-  setNodes(ns => {
-    let changed = false;
-    const next = ns.map(t => {
-      if (t.data.rule !== 'afterAny' || t.data.status !== 'pending') return t;
-      const incoming = edges.filter(e => e.target === t.id);
-      // ⬇️ было .data.done — делаем по статусу:
-      const anyDone  = incoming.some(e => ns.find(n => n.id === e.source)?.data.status === 'done');
-      if (anyDone) {
-        changed = true;
-        return { ...t, data:{ ...t.data, status:'working' } };
-      }
-      return t;
+  // правило afterAny → working
+  useEffect(() => {
+    setNodes(ns => {
+      let changed = false;
+      const next = ns.map(t => {
+        if (t.data.rule !== 'afterAny' || t.data.status !== 'pending') return t;
+        const incoming = edges.filter(e => e.target === t.id);
+        const anyDone  = incoming.some(e => ns.find(n => n.id === e.source)?.data.status === 'done');
+        if (anyDone) {
+          changed = true;
+          return { ...t, data:{ ...t.data, status:'working' } };
+        }
+        return t;
+      });
+      return changed ? next : ns;
     });
-    return changed ? next : ns;
-  });
-}, [nodes, edges]);
-
-
-
-
-
+  }, [nodes, edges]);
 
   // политика отмены
   useEffect(() => {
@@ -364,6 +370,9 @@ useEffect(() => {
         group: groupId || '',
         groupId,
         stage: 'backlog',
+ budgetId: '',
+ expense: 0,
+
       },
     };
     setNodes(ns => [...ns, makeNode(raw)]);
@@ -428,6 +437,9 @@ useEffect(() => {
         group: groupLabel,
         groupId,
         stage: 'backlog',
+         budgetId: '',
+        expense: 0,
+        
       },
     };
 
@@ -531,6 +543,10 @@ useEffect(() => {
         showIcon: !!src.data.showIcon,
         groupId: src.data.groupId || groupId,
         stage: 'backlog',
+ budgetId: src.data.budgetId || '',
+ expense: Number(src.data.expense || 0),
+
+
       },
     };
 
@@ -612,7 +628,7 @@ useEffect(() => {
     return () => window.removeEventListener('keydown', onKey);
   }, [composing]);
 
-  // Автозапуск чекеров: http-get → GET и завершить (+ выставить done: true)
+  // Автозапуск чекеров: http-get
   useEffect(() => {
     const toRun = nodes.filter(n =>
       n.type === 'checker' &&
@@ -622,7 +638,6 @@ useEffect(() => {
     );
     if (toRun.length === 0) return;
 
-    // пометить как стартовавшие
     setNodes(ns => ns.map(n => {
       if (toRun.some(t => t.id === n.id)) {
         return { ...n, data: { ...n.data, _runStarted: true } };
@@ -633,35 +648,31 @@ useEffect(() => {
     toRun.forEach(node => {
       const url = (node.data?.url || '').trim();
       if (!url) {
-setNodes(ns => ns.map(n => n.id === node.id
-  ? ({ ...n, data: { ...n.data, status:'done', done:true, _runFinished: Date.now() } })
-  : n
-));
+        setNodes(ns => ns.map(n => n.id === node.id
+          ? ({ ...n, data: { ...n.data, status:'done', done:true, _runFinished: Date.now() } })
+          : n
+        ));
         return;
       }
       try {
         fetch(url, { method:'GET', mode:'no-cors' })
           .catch(() => {})
           .finally(() => {
-setNodes(ns => ns.map(n => n.id === node.id
-  ? ({ ...n, data: { ...n.data, status:'done', done:true, _runFinished: Date.now() } })
-  : n
-));
+            setNodes(ns => ns.map(n => n.id === node.id
+              ? ({ ...n, data: { ...n.data, status:'done', done:true, _runFinished: Date.now() } })
+              : n
+            ));
           });
       } catch {
-setNodes(ns => ns.map(n => n.id === node.id
-  ? ({ ...n, data: { ...n.data, status:'done', done:true, _runFinished: Date.now() } })
-  : n
-));
+        setNodes(ns => ns.map(n => n.id === node.id
+          ? ({ ...n, data: { ...n.data, status:'done', done:true, _runFinished: Date.now() } })
+          : n
+        ));
       }
     });
   }, [nodes, setNodes]);
 
-  // Автозавершение чекера "at-datetime":
-  //  - если dueAt в будущем → статус 'scheduled' и ставим таймер
-  //  - если dueAt наступил/прошёл → 'done' + done:true
-  //  - если dueAt очищён/невалидный → убираем таймер и (если был scheduled) возвращаем в 'pending'
-  //  - если после 'done' dueAt снова выставили в будущее → перезапуск в 'scheduled'
+  // Автозавершение чекера "at-datetime"
   useEffect(() => {
     const clearTimer = (id) => {
       const t = timersRef.current[id];
@@ -681,10 +692,8 @@ setNodes(ns => ns.map(n => n.id === node.id
       const dueRaw = (n.data?.dueAt || '').trim();
       const dueTs = Date.parse(dueRaw);
 
-      // Всегда пересоздаём таймер (на случай изменения dueAt)
       clearTimer(n.id);
 
-      // 1) нет даты / невалидно → сброс расписания
       if (!Number.isFinite(dueTs)) {
         if (n.data?.status === 'scheduled') {
           updates.set(n.id, { status: 'pending' });
@@ -693,28 +702,26 @@ setNodes(ns => ns.map(n => n.id === node.id
         return;
       }
 
-      // 2) дата уже наступила → ставим done, если ещё не done
       if (dueTs <= now) {
         if (n.data?.status !== 'done') {
-         updates.set(n.id, { status: 'done', done:true, _runFinished: now });
+          updates.set(n.id, { status: 'done', done:true, _runFinished: now });
           needUpdate = true;
         }
         return;
       }
 
-      // 3) дата в будущем → статус scheduled (перезапуск, если был done)
       if (n.data?.status !== 'scheduled') {
         updates.set(n.id, { status: 'scheduled' });
         needUpdate = true;
       }
 
-      const delay = Math.min(dueTs - now, 2_147_000_000); // ~24.8 дней
+      const delay = Math.min(dueTs - now, 2_147_000_000);
       const timeout = setTimeout(() => {
-     setNodes(ns => ns.map(x =>
-  x.id === n.id
-    ? ({ ...x, data:{ ...x.data, status:'done', done:true, _runFinished: Date.now() } })
-    : x
-));
+        setNodes(ns => ns.map(x =>
+          x.id === n.id
+            ? ({ ...x, data:{ ...x.data, status:'done', done:true, _runFinished: Date.now() } })
+            : x
+        ));
         clearTimer(n.id);
       }, delay);
       timersRef.current[n.id] = timeout;
@@ -726,7 +733,6 @@ setNodes(ns => ns.map(n => n.id === node.id
       ));
     }
 
-    // подчистка таймеров для удалённых узлов
     Object.keys(timersRef.current).forEach(id => {
       if (!nodes.some(n => n.id === id)) clearTimer(id);
     });
@@ -736,23 +742,17 @@ setNodes(ns => ns.map(n => n.id === node.id
     };
   }, [nodes, setNodes]);
 
-
-
-
-  // Нормализация флага done по статусу (поддерживает единообразие)
-// Нормализация флага done по статусу (только если есть изменения)
-useEffect(() => {
-  let changed = false;
-  const next = nodes.map(n => {
-    const shouldDone = n.data?.status === 'done';
-    if (Boolean(n.data?.done) === shouldDone) return n;
-    changed = true;
-    return { ...n, data: { ...n.data, done: shouldDone } };
-  });
-  if (changed) setNodes(next);
-}, [nodes, setNodes]);
-
-
+  // Нормализация флага done по статусу
+  useEffect(() => {
+    let changed = false;
+    const next = nodes.map(n => {
+      const shouldDone = n.data?.status === 'done';
+      if (Boolean(n.data?.done) === shouldDone) return n;
+      changed = true;
+      return { ...n, data: { ...n.data, done: shouldDone } };
+    });
+    if (changed) setNodes(next);
+  }, [nodes, setNodes]);
 
   // автосейв
   useEffect(() => {
@@ -779,6 +779,9 @@ useEffect(() => {
         groupId,
         stage: data.stage || 'backlog',
         calendar: data.calendar || null,
+           // бюджет
+   budgetId: data.budgetId || '',
+   expense: Number.isFinite(Number(data.expense)) ? Number(data.expense) : 0,
 
         // чекеры — чтобы не терялись
         checkerKind: data.checkerKind || undefined,
@@ -788,8 +791,9 @@ useEffect(() => {
     }));
     const prev = loadFlow(groupId);
     const events = Array.isArray(prev?.events) ? prev.events : [];
-    saveFlow(groupId, { nodes: plain, edges, stages, events });
-  }, [nodes, edges, stages, groupId, loaded]);
+    const budgetsSafe = Array.isArray(prev?.budgets) ? prev.budgets : budgets;
+    saveFlow(groupId, { nodes: plain, edges, stages, events, budgets: budgetsSafe });
+  }, [nodes, edges, stages, groupId, loaded, budgets]);
 
   const nodesView = useMemo(() =>
     nodes.map(n => {
@@ -839,11 +843,18 @@ useEffect(() => {
         onAdd={addNode}
         onReset={() => {
           setNodes([]); setEdges([]);
-          saveFlow(groupId, { nodes: [], edges: [], stages: getDefaultStages(), events: loadFlow(groupId).events || [] });
+          saveFlow(groupId, {
+            nodes: [],
+            edges: [],
+            stages: getDefaultStages(),
+            events: loadFlow(groupId).events || [],
+            budgets: (loadFlow(groupId).budgets || []),
+          });
         }}
         onKanban={() => navigate(`/groups/${groupId}/kanban`)}
         onCalendar={() => navigate(`/groups/${groupId}/calendar`)}
         onCheckers={() => setShowCheckers(v => !v)}
+        onBudget={() => navigate(`/groups/${groupId}/budget`)}
       />
 
       <div
@@ -906,7 +917,7 @@ useEffect(() => {
                 group: groupId, groupId, stage: 'backlog',
 
                 checkerKind: 'at-datetime',
-                dueAt: '', // '2025-08-18T14:30'
+                dueAt: '',
               },
             };
             setNodes(ns => [...ns, makeNode(node)]);
@@ -950,6 +961,8 @@ useEffect(() => {
           open={!!detailsId}
           task={detailsTask}
           stages={stages}
+          budgets={budgets}
+          spentByBudget={spentByBudget}
           onClose={() => setDetailsId(null)}
           onChange={updateDetails}
           onDelete={deleteDetails}

@@ -133,6 +133,18 @@ export default function CardNode({ id, data }) {
         <span className="group-pill">{group || 'Без группы'}</span>
       </div>
 
+
+     {/* Затраты на карточке */}
+     {Number(data?.expense) > 0 && (
+       <div style={{ fontSize: 12, opacity: .85, marginBottom: 6 }}>
+         💶 Затраты: {new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+           .format(Number(data.expense))}
+       </div>
+     )}
+
+
+
+
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
 

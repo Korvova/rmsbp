@@ -18,9 +18,13 @@ export default function KanbanPage() {
   );
   const [edges] = useState(initial.edges || []);
 
-  useEffect(() => {
-    saveFlow(groupId, { nodes, edges, stages });
-  }, [groupId, nodes, edges, stages]);
+useEffect(() => {
+  const prev = loadFlow(groupId);
+  const events = Array.isArray(prev?.events) ? prev.events : [];
+  const budgets = Array.isArray(prev?.budgets) ? prev.budgets : [];
+  saveFlow(groupId, { nodes, edges, stages, events, budgets });
+}, [groupId, nodes, edges, stages]);
+
 
   const groupNodesByStage = useMemo(() => {
     const by = Object.fromEntries(stages.map(s => [s.id, []]));

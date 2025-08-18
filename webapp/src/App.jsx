@@ -4,6 +4,7 @@ import FlowPage from './page/FlowPage.jsx';
 import MembersPage from './page/MembersPage.jsx'; 
 import KanbanPage from './page/KanbanPage.jsx';
 import CalendarPage from './page/CalendarPage.jsx';
+import BudgetPage from './page/BudgetPage.jsx'; 
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
        <Route path="/groups/:groupId/kanban" element={<KanbanPage />} />
        <Route path="/members" element={<MembersPage />} /> 
        <Route path="/groups/:groupId/calendar" element={<CalendarPage />} />
+       <Route path="/groups/:groupId/budget" element={<BudgetPage />} /> 
     </Routes>
   );
 }
