@@ -19,18 +19,15 @@ import CardNode      from '../companet/CardNode';
 import Toolbar       from '../companet/Toolbar';
 import DeletableEdge from '../companet/DeletableEdge';
 import QuickMenu     from '../companet/QuickMenu';
-import TaskModal from '../companet/TaskModal';
+import TaskModal     from '../companet/TaskModal';
 
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 
-const NODE_TYPES = { card: CardNode };
+import CheckerNode   from '../companet/CheckerNode';
+import CheckersPanel from '../companet/checkers/CheckersPanel';
+
+const NODE_TYPES = { card: CardNode, checker: CheckerNode };
 const EDGE_TYPES = { deletable: DeletableEdge };
-
-
-
-
-
-
 
 const getDefaultStages = () => ([
   { id:'backlog', name:'Бэклог' },
@@ -59,14 +56,13 @@ function Canvas() {
   const navigate = useNavigate();
   const [search] = useSearchParams();
 
-  const rf            = useReactFlow();
-  const connectRef    = useRef(null);
-  const wrapperRef    = useRef(null);
-  const didConnectRef = useRef(false);
+  const rf               = useReactFlow();
+  const connectRef       = useRef(null);
+  const wrapperRef       = useRef(null);
+  const didConnectRef    = useRef(false);
   const suppressClickRef = useRef(false);
-  const focusedTaskRef = useRef(null);
+  const focusedTaskRef   = useRef(null);
 
-  // ——— spotlight (CSS) ———
   const [focusId, setFocusId] = useState(null);
 
   const cloneDragRef = useRef({
@@ -85,39 +81,29 @@ function Canvas() {
   const [stages, setStages] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
+  const [showCheckers, setShowCheckers] = useState(false);
 
+  // таймеры для чекера "at-datetime"
+  const timersRef = useRef({}); // { [nodeId]: timeoutId }
 
-
-
-
-// ✅ ТЕПЕРЬ внутри Canvas — так правильно
-const [detailsId, setDetailsId] = useState(null);
-
-const detailsTask = useMemo(
-  () => nodes.find(n => n.id === detailsId) || null,
-  [nodes, detailsId]
-);
-
-const updateDetails = useCallback((patch) => {
-  if (!detailsId) return;
-  setNodes(ns => ns.map(n =>
-    n.id === detailsId ? ({ ...n, data: { ...n.data, ...patch } }) : n
-  ));
-}, [detailsId, setNodes]);
-
-const deleteDetails = useCallback(() => {
-  if (!detailsId) return;
-  setNodes(ns => ns.filter(n => n.id !== detailsId));
-  setEdges(es => es.filter(e => e.source !== detailsId && e.target !== detailsId));
-  setDetailsId(null);
-}, [detailsId, setNodes, setEdges]);
-
-
-
-
-
-
-
+  // ===== модалка полной карточки (TaskModal)
+  const [detailsId, setDetailsId] = useState(null);
+  const detailsTask = useMemo(
+    () => nodes.find(n => n.id === detailsId) || null,
+    [nodes, detailsId]
+  );
+  const updateDetails = useCallback((patch) => {
+    if (!detailsId) return;
+    setNodes(ns => ns.map(n =>
+      n.id === detailsId ? ({ ...n, data: { ...n.data, ...patch } }) : n
+    ));
+  }, [detailsId, setNodes]);
+  const deleteDetails = useCallback(() => {
+    if (!detailsId) return;
+    setNodes(ns => ns.filter(n => n.id !== detailsId));
+    setEdges(es => es.filter(e => e.source !== detailsId && e.target !== detailsId));
+    setDetailsId(null);
+  }, [detailsId, setNodes, setEdges]);
 
   const makeNode = useCallback(
     (raw) => ({
@@ -160,12 +146,16 @@ const deleteDetails = useCallback(() => {
         onRuleChange: (id, val) => setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, rule:val } } : n)),
         onOverdue: (id, val) => setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, overdue: !!val } } : n)),
         onCalendarChange: (id, calendar) => setNodes(ns => ns.map(n => n.id === id ? { ...n, data:{ ...n.data, calendar: calendar || null } } : n)),
+
+        // чекеры
+        onUrlChange:  (id, url)   => setNodes(ns => ns.map(n => n.id === id ? ({ ...n, data:{ ...n.data, url } })   : n)),
+        onDueAtChange:(id, dueAt) => setNodes(ns => ns.map(n => n.id === id ? ({ ...n, data:{ ...n.data, dueAt } }) : n)),
       },
     }),
     [setNodes, setEdges, groupId]
   );
 
-  // загрузка ТОЛЬКО из текущей группы
+  // загрузка диаграммы текущей группы
   useEffect(() => {
     setLoaded(false);
     const { nodes: n = [], edges: e = [], stages: s = [] } = loadFlow(groupId);
@@ -184,7 +174,7 @@ const deleteDetails = useCallback(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupId]);
 
-  // если пришли по ссылке с ?task=ID — фокусируем (один раз на ID)
+  // deep-link ?task=ID
   useEffect(() => {
     if (!loaded) return;
     const taskId = search.get('task');
@@ -204,7 +194,7 @@ const deleteDetails = useCallback(() => {
         return changed ? next : ns;
       });
       focusedTaskRef.current = taskId;
-      setFocusId(taskId);    // включаем CSS-спотлайт
+      setFocusId(taskId);
     } catch {}
   }, [loaded, nodes, search, rf, setNodes]);
 
@@ -256,6 +246,7 @@ const deleteDetails = useCallback(() => {
     }
   };
 
+  // стиль рёбер по статусам/правилам
   useEffect(() => {
     setEdges(prevEs => {
       let changed = false;
@@ -296,6 +287,7 @@ const deleteDetails = useCallback(() => {
     });
   }, [nodes]);
 
+  // правило afterAny → working
   useEffect(() => {
     setNodes(ns => {
       let changed = false;
@@ -313,6 +305,7 @@ const deleteDetails = useCallback(() => {
     });
   }, [nodes, edges]);
 
+  // политика отмены
   useEffect(() => {
     setNodes(ns => {
       let changed = false;
@@ -363,7 +356,6 @@ const deleteDetails = useCallback(() => {
         stage: 'backlog',
       },
     };
-    console.log('CREATE NODE (addNode)', { groupLabel: groupId, groupId, data: raw.data });
     setNodes(ns => [...ns, makeNode(raw)]);
   }, [makeNode, groupId]);
 
@@ -428,8 +420,6 @@ const deleteDetails = useCallback(() => {
         stage: 'backlog',
       },
     };
-
-    console.log('CREATE NODE (paneClick)', { groupLabel, groupId, data: raw.data });
 
     setNodes(ns => [...ns, makeNode(raw)]);
 
@@ -534,8 +524,6 @@ const deleteDetails = useCallback(() => {
       },
     };
 
-    console.log('CREATE NODE (ctrlDragCopy)', { from: src.id, groupId, data: raw.data });
-
     setNodes(ns => {
       const noGhosts = ns.filter(n => !String(n.id).startsWith('ghost-'));
       const originalBack = noGhosts.map(n =>
@@ -586,8 +574,6 @@ const deleteDetails = useCallback(() => {
       },
     };
 
-    console.log('CREATE NODE (connectEnd)', { groupLabel, groupId, data: raw.data });
-
     setNodes(ns => [...ns, makeNode(raw)]);
 
     requestAnimationFrame(() => {
@@ -616,6 +602,146 @@ const deleteDetails = useCallback(() => {
     return () => window.removeEventListener('keydown', onKey);
   }, [composing]);
 
+  // Автозапуск чекеров: http-get → GET и завершить
+  useEffect(() => {
+    const toRun = nodes.filter(n =>
+      n.type === 'checker' &&
+      n.data?.checkerKind === 'http-get' &&
+      n.data?.status === 'working' &&
+      !n.data?._runStarted
+    );
+    if (toRun.length === 0) return;
+
+    // пометить как стартовавшие
+    setNodes(ns => ns.map(n => {
+      if (toRun.some(t => t.id === n.id)) {
+        return { ...n, data: { ...n.data, _runStarted: true } };
+      }
+      return n;
+    }));
+
+    toRun.forEach(node => {
+      const url = (node.data?.url || '').trim();
+      if (!url) {
+        setNodes(ns => ns.map(n => n.id === node.id
+          ? ({ ...n, data: { ...n.data, status:'done', _runFinished: Date.now() } })
+          : n
+        ));
+        return;
+      }
+      try {
+        fetch(url, { method:'GET', mode:'no-cors' })
+          .catch(() => {})
+          .finally(() => {
+            setNodes(ns => ns.map(n => n.id === node.id
+              ? ({ ...n, data: { ...n.data, status:'done', _runFinished: Date.now() } })
+              : n
+            ));
+          });
+      } catch {
+        setNodes(ns => ns.map(n => n.id === node.id
+          ? ({ ...n, data: { ...n.data, status:'done', _runFinished: Date.now() } })
+          : n
+        ));
+      }
+    });
+  }, [nodes, setNodes]);
+
+
+
+
+
+ // Автозавершение чекера "at-datetime": в dueAt → done
+// Автозавершение чекера "at-datetime":
+//  - если dueAt в будущем → статус 'scheduled' и ставим таймер
+//  - если dueAt наступил/прошёл → 'done'
+//  - если dueAt очищён/невалидный → убираем таймер и (если был scheduled) возвращаем в 'pending'
+//  - если после 'done' dueAt снова выставили в будущее → перезапуск в 'scheduled'
+useEffect(() => {
+  const clearTimer = (id) => {
+    const t = timersRef.current[id];
+    if (t) { clearTimeout(t); delete timersRef.current[id]; }
+  };
+
+  const now = Date.now();
+  let needUpdate = false;
+  const updates = new Map(); // id -> partial data patch
+
+  nodes.forEach(n => {
+    if (n.type !== 'checker' || n.data?.checkerKind !== 'at-datetime') {
+      clearTimer(n.id);
+      return;
+    }
+
+    const dueRaw = (n.data?.dueAt || '').trim();
+    const dueTs = Date.parse(dueRaw);
+
+    // Всегда пересоздаём таймер для этого узла (на случай изменения dueAt)
+    clearTimer(n.id);
+
+    // 1) нет даты / невалидно → сброс расписания
+    if (!Number.isFinite(dueTs)) {
+      if (n.data?.status === 'scheduled') {
+        updates.set(n.id, { status: 'pending' });
+        needUpdate = true;
+      }
+      return;
+    }
+
+    // 2) дата уже наступила → ставим done, если ещё не done
+    if (dueTs <= now) {
+      if (n.data?.status !== 'done') {
+        updates.set(n.id, { status: 'done', _runFinished: now });
+        needUpdate = true;
+      }
+      return;
+    }
+
+    // 3) дата в будущем → статус scheduled (перезапуск, если был done)
+    if (n.data?.status !== 'scheduled') {
+      updates.set(n.id, { status: 'scheduled' });
+      needUpdate = true;
+    }
+
+    const delay = Math.min(dueTs - now, 2_147_000_000); // ~24.8 дней
+    const timeout = setTimeout(() => {
+      setNodes(ns => ns.map(x =>
+        x.id === n.id
+          ? ({ ...x, data:{ ...x.data, status:'done', _runFinished: Date.now() } })
+          : x
+      ));
+      clearTimer(n.id);
+    }, delay);
+    timersRef.current[n.id] = timeout;
+  });
+
+  if (needUpdate) {
+    setNodes(ns => ns.map(n =>
+      updates.has(n.id) ? ({ ...n, data:{ ...n.data, ...updates.get(n.id) } }) : n
+    ));
+  }
+
+  // подчистка таймеров для удалённых узлов
+  Object.keys(timersRef.current).forEach(id => {
+    if (!nodes.some(n => n.id === id)) clearTimer(id);
+  });
+
+  return () => {
+    Object.keys(timersRef.current).forEach(id => clearTimer(id));
+  };
+}, [nodes, setNodes]);
+
+
+
+
+
+
+
+
+
+  
+
+  // автосейв
   useEffect(() => {
     if (!loaded) return;
     const plain = nodes.map(({ data, ...n }) => ({
@@ -640,6 +766,11 @@ const deleteDetails = useCallback(() => {
         groupId,
         stage: data.stage || 'backlog',
         calendar: data.calendar || null,
+
+        // чекеры — чтобы не терялись
+        checkerKind: data.checkerKind || undefined,
+        url: (data.url ?? undefined),
+        dueAt: (data.dueAt ?? undefined),
       },
     }));
     const prev = loadFlow(groupId);
@@ -654,8 +785,6 @@ const deleteDetails = useCallback(() => {
         edgeId: e.id,
         label: nodes.find(nn => nn.id === e.source)?.data.label || `Задача ${e.source}`,
       }));
-
-
 
       const stageId = n.data?.stage || stages[0]?.id || 'backlog';
       const stageLabel = stages.find(s => s.id === stageId)?.name || stageId;
@@ -680,8 +809,7 @@ const deleteDetails = useCallback(() => {
           stageLabel,
           calendarLabel,
           onOpenCalendar: () => navigate(`/groups/${groupId}/calendar?task=${n.id}`),
-           onOpenTask: () => setDetailsId(n.id),
-
+          onOpenTask: () => setDetailsId(n.id),
         }
       };
     }),
@@ -702,12 +830,77 @@ const deleteDetails = useCallback(() => {
         }}
         onKanban={() => navigate(`/groups/${groupId}/kanban`)}
         onCalendar={() => navigate(`/groups/${groupId}/calendar`)}
+        onCheckers={() => setShowCheckers(v => !v)}
       />
 
       <div
         ref={wrapperRef}
         className={`${composing ? 'rf-draft-cursor' : ''} ${focusId ? 'focus-mode' : ''}`}
         style={{ width:'100%', height:'100vh', position:'relative' }}
+        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+        onDrop={(e) => {
+          e.preventDefault();
+          const raw = e.dataTransfer.getData('application/reactflow');
+          if (!raw) return;
+          let payload;
+          try { payload = JSON.parse(raw); } catch { return; }
+
+          const pos = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });
+
+          // HTTP GET чекер
+          if (payload.kind === 'checker' && payload.type === 'http-get') {
+            const newId = crypto.randomUUID();
+            const node = {
+              id: newId,
+              type: 'checker',
+              position: pos,
+              data: {
+                label: 'HTTP GET',
+                color: '#eeebdd',
+                status: 'pending',
+                rule: '',
+                cancelPolicy: { enabled:false, mode:'none' },
+                selectedDeps: [], cancelSelectedDeps: [],
+                overdue: false,
+                showIcon: false,
+                group: groupId, groupId, stage: 'backlog',
+
+                checkerKind: 'http-get',
+                url: '',
+              },
+            };
+            setNodes(ns => [...ns, makeNode(node)]);
+            setShowCheckers(false);
+            return;
+          }
+
+          // Готово в дату/время
+          if (payload.kind === 'checker' && payload.type === 'at-datetime') {
+            const newId = crypto.randomUUID();
+            const node = {
+              id: newId,
+              type: 'checker',
+              position: pos,
+              data: {
+                label: 'Готово в дату/время',
+                color: '#eeebdd',
+                status: 'pending',
+                rule: '',
+                cancelPolicy: { enabled:false, mode:'none' },
+                selectedDeps: [], cancelSelectedDeps: [],
+                overdue: false,
+                showIcon: false,
+                group: groupId, groupId, stage: 'backlog',
+
+                checkerKind: 'at-datetime',
+                dueAt: '', // '2025-08-18T14:30'
+              },
+            };
+            setNodes(ns => [...ns, makeNode(node)]);
+            setShowCheckers(false);
+            return;
+          }
+        }}
       >
         <ReactFlow
           nodes={nodesView}
@@ -731,28 +924,30 @@ const deleteDetails = useCallback(() => {
           nodesDraggable={composing ? false : true}
         >
           <Controls />
-          <MiniMap nodeColor={n => n.data.status === 'working'
-            ? '#2196F3'
-            : n.data.done ? '#8BC34A' : n.data.color } />
+      
+<MiniMap nodeColor={n =>
+  n.data.status === 'working'   ? '#2196F3' :
+  n.data.status === 'scheduled' ? '#FFC107' :
+  n.data.status === 'done'      ? '#8BC34A' :
+  n.data.color
+} />
+
+
+
           <Background />
         </ReactFlow>
 
-
-
-<TaskModal
-  open={!!detailsId}
-  task={detailsTask}
-  stages={stages}
-  onClose={() => setDetailsId(null)}
-  onChange={updateDetails}
-  onDelete={deleteDetails}
-  onOpenCalendar={() => {
-    if (detailsId) navigate(`/groups/${groupId}/calendar?task=${detailsId}`);
-  }}
-/>
-
-
-
+        <TaskModal
+          open={!!detailsId}
+          task={detailsTask}
+          stages={stages}
+          onClose={() => setDetailsId(null)}
+          onChange={updateDetails}
+          onDelete={deleteDetails}
+          onOpenCalendar={() => {
+            if (detailsId) navigate(`/groups/${groupId}/calendar?task=${detailsId}`);
+          }}
+        />
 
         {/* Прозрачная «простыня» — клик вне карточки снимает фокус */}
         {focusId && (
@@ -775,6 +970,10 @@ const deleteDetails = useCallback(() => {
             y={quickMenu.y}
             onDraftChange={setDraft}
           />
+        )}
+
+        {showCheckers && (
+          <CheckersPanel open={showCheckers} onClose={() => setShowCheckers(false)} />
         )}
       </div>
     </>

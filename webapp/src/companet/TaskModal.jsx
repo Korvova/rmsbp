@@ -142,11 +142,7 @@ export default function TaskModal({
             onClick={() => togglePanel('watch')}
           >👁️</button>
 
-          <button
-            className={`tm-side__btn ${activePanel === 'comments' ? 'is-active' : ''}`}
-            title="Комментарии"
-            onClick={() => togglePanel('comments')}
-          >💬</button>
+
 
           <button
             className={`tm-side__btn ${activePanel === 'settings' ? 'is-active' : ''}`}
@@ -159,7 +155,19 @@ export default function TaskModal({
             title="Участники"
             onClick={() => togglePanel('people')}
           >👥</button>
-        </div>
+       
+
+
+
+          <button
+            className={`tm-side__btn ${activePanel === 'comments' ? 'is-active' : ''}`}
+            title="Комментарии"
+            onClick={() => togglePanel('comments')}
+          >💬</button>
+
+
+           </div>
+
 
         {/* Правая выезжающая плашка */}
         <div className={`tm-drawer ${activePanel ? 'is-open' : ''}`}>
