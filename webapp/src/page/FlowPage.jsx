@@ -287,23 +287,33 @@ function Canvas() {
     });
   }, [nodes]);
 
-  // правило afterAny → working
-  useEffect(() => {
-    setNodes(ns => {
-      let changed = false;
-      const next = ns.map(t => {
-        if (t.data.rule !== 'afterAny' || t.data.status !== 'pending') return t;
-        const incoming = edges.filter(e => e.target === t.id);
-        const anyDone  = incoming.some(e => ns.find(n => n.id === e.source)?.data.done);
-        if (anyDone) {
-          changed = true;
-          return { ...t, data:{ ...t.data, status:'working' } };
-        }
-        return t;
-      });
-      return changed ? next : ns;
+
+
+
+  // правило afterAny → working  (по статусу, не по data.done)
+
+useEffect(() => {
+  setNodes(ns => {
+    let changed = false;
+    const next = ns.map(t => {
+      if (t.data.rule !== 'afterAny' || t.data.status !== 'pending') return t;
+      const incoming = edges.filter(e => e.target === t.id);
+      // ⬇️ было .data.done — делаем по статусу:
+      const anyDone  = incoming.some(e => ns.find(n => n.id === e.source)?.data.status === 'done');
+      if (anyDone) {
+        changed = true;
+        return { ...t, data:{ ...t.data, status:'working' } };
+      }
+      return t;
     });
-  }, [nodes, edges]);
+    return changed ? next : ns;
+  });
+}, [nodes, edges]);
+
+
+
+
+
 
   // политика отмены
   useEffect(() => {
@@ -602,7 +612,7 @@ function Canvas() {
     return () => window.removeEventListener('keydown', onKey);
   }, [composing]);
 
-  // Автозапуск чекеров: http-get → GET и завершить
+  // Автозапуск чекеров: http-get → GET и завершить (+ выставить done: true)
   useEffect(() => {
     const toRun = nodes.filter(n =>
       n.type === 'checker' &&
@@ -623,123 +633,126 @@ function Canvas() {
     toRun.forEach(node => {
       const url = (node.data?.url || '').trim();
       if (!url) {
-        setNodes(ns => ns.map(n => n.id === node.id
-          ? ({ ...n, data: { ...n.data, status:'done', _runFinished: Date.now() } })
-          : n
-        ));
+setNodes(ns => ns.map(n => n.id === node.id
+  ? ({ ...n, data: { ...n.data, status:'done', done:true, _runFinished: Date.now() } })
+  : n
+));
         return;
       }
       try {
         fetch(url, { method:'GET', mode:'no-cors' })
           .catch(() => {})
           .finally(() => {
-            setNodes(ns => ns.map(n => n.id === node.id
-              ? ({ ...n, data: { ...n.data, status:'done', _runFinished: Date.now() } })
-              : n
-            ));
+setNodes(ns => ns.map(n => n.id === node.id
+  ? ({ ...n, data: { ...n.data, status:'done', done:true, _runFinished: Date.now() } })
+  : n
+));
           });
       } catch {
-        setNodes(ns => ns.map(n => n.id === node.id
-          ? ({ ...n, data: { ...n.data, status:'done', _runFinished: Date.now() } })
-          : n
-        ));
+setNodes(ns => ns.map(n => n.id === node.id
+  ? ({ ...n, data: { ...n.data, status:'done', done:true, _runFinished: Date.now() } })
+  : n
+));
       }
     });
+  }, [nodes, setNodes]);
+
+  // Автозавершение чекера "at-datetime":
+  //  - если dueAt в будущем → статус 'scheduled' и ставим таймер
+  //  - если dueAt наступил/прошёл → 'done' + done:true
+  //  - если dueAt очищён/невалидный → убираем таймер и (если был scheduled) возвращаем в 'pending'
+  //  - если после 'done' dueAt снова выставили в будущее → перезапуск в 'scheduled'
+  useEffect(() => {
+    const clearTimer = (id) => {
+      const t = timersRef.current[id];
+      if (t) { clearTimeout(t); delete timersRef.current[id]; }
+    };
+
+    const now = Date.now();
+    let needUpdate = false;
+    const updates = new Map(); // id -> partial data patch
+
+    nodes.forEach(n => {
+      if (n.type !== 'checker' || n.data?.checkerKind !== 'at-datetime') {
+        clearTimer(n.id);
+        return;
+      }
+
+      const dueRaw = (n.data?.dueAt || '').trim();
+      const dueTs = Date.parse(dueRaw);
+
+      // Всегда пересоздаём таймер (на случай изменения dueAt)
+      clearTimer(n.id);
+
+      // 1) нет даты / невалидно → сброс расписания
+      if (!Number.isFinite(dueTs)) {
+        if (n.data?.status === 'scheduled') {
+          updates.set(n.id, { status: 'pending' });
+          needUpdate = true;
+        }
+        return;
+      }
+
+      // 2) дата уже наступила → ставим done, если ещё не done
+      if (dueTs <= now) {
+        if (n.data?.status !== 'done') {
+         updates.set(n.id, { status: 'done', done:true, _runFinished: now });
+          needUpdate = true;
+        }
+        return;
+      }
+
+      // 3) дата в будущем → статус scheduled (перезапуск, если был done)
+      if (n.data?.status !== 'scheduled') {
+        updates.set(n.id, { status: 'scheduled' });
+        needUpdate = true;
+      }
+
+      const delay = Math.min(dueTs - now, 2_147_000_000); // ~24.8 дней
+      const timeout = setTimeout(() => {
+     setNodes(ns => ns.map(x =>
+  x.id === n.id
+    ? ({ ...x, data:{ ...x.data, status:'done', done:true, _runFinished: Date.now() } })
+    : x
+));
+        clearTimer(n.id);
+      }, delay);
+      timersRef.current[n.id] = timeout;
+    });
+
+    if (needUpdate) {
+      setNodes(ns => ns.map(n =>
+        updates.has(n.id) ? ({ ...n, data:{ ...n.data, ...updates.get(n.id) } }) : n
+      ));
+    }
+
+    // подчистка таймеров для удалённых узлов
+    Object.keys(timersRef.current).forEach(id => {
+      if (!nodes.some(n => n.id === id)) clearTimer(id);
+    });
+
+    return () => {
+      Object.keys(timersRef.current).forEach(id => clearTimer(id));
+    };
   }, [nodes, setNodes]);
 
 
 
 
-
- // Автозавершение чекера "at-datetime": в dueAt → done
-// Автозавершение чекера "at-datetime":
-//  - если dueAt в будущем → статус 'scheduled' и ставим таймер
-//  - если dueAt наступил/прошёл → 'done'
-//  - если dueAt очищён/невалидный → убираем таймер и (если был scheduled) возвращаем в 'pending'
-//  - если после 'done' dueAt снова выставили в будущее → перезапуск в 'scheduled'
+  // Нормализация флага done по статусу (поддерживает единообразие)
+// Нормализация флага done по статусу (только если есть изменения)
 useEffect(() => {
-  const clearTimer = (id) => {
-    const t = timersRef.current[id];
-    if (t) { clearTimeout(t); delete timersRef.current[id]; }
-  };
-
-  const now = Date.now();
-  let needUpdate = false;
-  const updates = new Map(); // id -> partial data patch
-
-  nodes.forEach(n => {
-    if (n.type !== 'checker' || n.data?.checkerKind !== 'at-datetime') {
-      clearTimer(n.id);
-      return;
-    }
-
-    const dueRaw = (n.data?.dueAt || '').trim();
-    const dueTs = Date.parse(dueRaw);
-
-    // Всегда пересоздаём таймер для этого узла (на случай изменения dueAt)
-    clearTimer(n.id);
-
-    // 1) нет даты / невалидно → сброс расписания
-    if (!Number.isFinite(dueTs)) {
-      if (n.data?.status === 'scheduled') {
-        updates.set(n.id, { status: 'pending' });
-        needUpdate = true;
-      }
-      return;
-    }
-
-    // 2) дата уже наступила → ставим done, если ещё не done
-    if (dueTs <= now) {
-      if (n.data?.status !== 'done') {
-        updates.set(n.id, { status: 'done', _runFinished: now });
-        needUpdate = true;
-      }
-      return;
-    }
-
-    // 3) дата в будущем → статус scheduled (перезапуск, если был done)
-    if (n.data?.status !== 'scheduled') {
-      updates.set(n.id, { status: 'scheduled' });
-      needUpdate = true;
-    }
-
-    const delay = Math.min(dueTs - now, 2_147_000_000); // ~24.8 дней
-    const timeout = setTimeout(() => {
-      setNodes(ns => ns.map(x =>
-        x.id === n.id
-          ? ({ ...x, data:{ ...x.data, status:'done', _runFinished: Date.now() } })
-          : x
-      ));
-      clearTimer(n.id);
-    }, delay);
-    timersRef.current[n.id] = timeout;
+  let changed = false;
+  const next = nodes.map(n => {
+    const shouldDone = n.data?.status === 'done';
+    if (Boolean(n.data?.done) === shouldDone) return n;
+    changed = true;
+    return { ...n, data: { ...n.data, done: shouldDone } };
   });
-
-  if (needUpdate) {
-    setNodes(ns => ns.map(n =>
-      updates.has(n.id) ? ({ ...n, data:{ ...n.data, ...updates.get(n.id) } }) : n
-    ));
-  }
-
-  // подчистка таймеров для удалённых узлов
-  Object.keys(timersRef.current).forEach(id => {
-    if (!nodes.some(n => n.id === id)) clearTimer(id);
-  });
-
-  return () => {
-    Object.keys(timersRef.current).forEach(id => clearTimer(id));
-  };
+  if (changed) setNodes(next);
 }, [nodes, setNodes]);
 
 
-
-
-
-
-
-
-
-  
 
   // автосейв
   useEffect(() => {
@@ -924,16 +937,12 @@ useEffect(() => {
           nodesDraggable={composing ? false : true}
         >
           <Controls />
-      
-<MiniMap nodeColor={n =>
-  n.data.status === 'working'   ? '#2196F3' :
-  n.data.status === 'scheduled' ? '#FFC107' :
-  n.data.status === 'done'      ? '#8BC34A' :
-  n.data.color
-} />
-
-
-
+          <MiniMap nodeColor={n =>
+            n.data.status === 'working'   ? '#2196F3' :
+            n.data.status === 'scheduled' ? '#FFC107' :
+            n.data.status === 'done'      ? '#8BC34A' :
+            n.data.color
+          } />
           <Background />
         </ReactFlow>
 
