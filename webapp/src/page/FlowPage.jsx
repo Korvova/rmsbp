@@ -21,6 +21,7 @@ import DeletableEdge from '../companet/DeletableEdge';
 import QuickMenu     from '../companet/QuickMenu';
 import TaskModal     from '../companet/TaskModal';
 
+
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 
 import CheckerNode   from '../companet/CheckerNode';
@@ -44,6 +45,9 @@ const initialDraft = {
 };
 
 export default function FlowPage() {
+
+const navigate = useNavigate();
+
   return (
     <ReactFlowProvider>
       <Canvas />
@@ -64,6 +68,12 @@ function Canvas() {
   const focusedTaskRef   = useRef(null);
 
   const [focusId, setFocusId] = useState(null);
+
+
+
+const nodeTypes = useMemo(() => NODE_TYPES, []);
+const edgeTypes = useMemo(() => EDGE_TYPES, []);
+
 
   const cloneDragRef = useRef({
     active: false,
@@ -849,13 +859,24 @@ function Canvas() {
             stages: getDefaultStages(),
             events: loadFlow(groupId).events || [],
             budgets: (loadFlow(groupId).budgets || []),
+
           });
         }}
         onKanban={() => navigate(`/groups/${groupId}/kanban`)}
         onCalendar={() => navigate(`/groups/${groupId}/calendar`)}
         onCheckers={() => setShowCheckers(v => !v)}
         onBudget={() => navigate(`/groups/${groupId}/budget`)}
+          onDocs={() => navigate('/docs')}
       />
+
+
+
+
+
+
+
+
+
 
       <div
         ref={wrapperRef}
@@ -929,8 +950,8 @@ function Canvas() {
         <ReactFlow
           nodes={nodesView}
           edges={edges}
-          nodeTypes={NODE_TYPES}
-          edgeTypes={EDGE_TYPES}
+  nodeTypes={nodeTypes}
+  edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}

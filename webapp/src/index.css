@@ -15,3 +15,20 @@ html, body, #root {
 .rf-copy-cursor .react-flow__pane {
   cursor: copy !important;
 }
+
+
+/* Таблицы Lexical */
+.lx-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8px 0;
+}
+.lx-table td, .lx-table th {
+  border: 1px solid #e5e7eb;
+  padding: 6px 8px;
+  vertical-align: top;
+}
+.lx-table th {
+  background: #f8fafc;
+  font-weight: 600;
+}

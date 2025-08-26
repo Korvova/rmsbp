@@ -2,6 +2,50 @@
 const KEY = 'rf-groups-tree';
 const EVT = 'rf-groups-tree:changed';
 
+
+
+
+// === RMS file service (интеграция с папками групп) ===
+const FILESVC_URL   = 'http://217.114.10.226:8765';
+const FILESVC_TOKEN = 'supersecret_change_me'; // тот же, что в pm2
+
+function safeSlug(s) {
+  return String(s || '')
+    .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9-_]+/g, '-').replace(/-+/g, '-')
+    .replace(/^-|-$/g, '').toLowerCase().slice(0, 64);
+}
+
+async function provisionGroupFolder(groupId, slug) {
+  try {
+    await fetch(`${FILESVC_URL}/group`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-auth': FILESVC_TOKEN },
+      body: JSON.stringify({ groupId, slug, makeDefaultSubdirs: true }),
+    });
+  } catch (e) {
+    console.warn('filesvc create failed', e);
+  }
+}
+
+async function removeGroupFolder(groupId, slug) {
+  try {
+    await fetch(`${FILESVC_URL}/group`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', 'x-auth': FILESVC_TOKEN },
+      body: JSON.stringify({ groupId, slug }),
+    });
+  } catch (e) {
+    console.warn('filesvc delete failed', e);
+  }
+}
+
+
+
+
+
+
+
 export function loadTree() {
   try {
     const raw = localStorage.getItem(KEY);
@@ -32,11 +76,20 @@ export function createFolder(parentId = 'root', name = 'Новая папка') 
 export function createGroup(parentId = 'root', name = 'Новая группа') {
   const tree = loadTree();
   const parent = findNode(tree, parentId) ?? ensureRoot(tree);
-  const node = { id: genId('grp'), name, type: 'group', groupId: crypto.randomUUID() };
+
+  const groupId = crypto.randomUUID();
+  const slug = safeSlug(name || groupId);
+
+  const node = { id: genId('grp'), name, type: 'group', groupId, slug };
   parent.children = parent.children || [];
   parent.children.push(node);
+
+  // создаём папку для группы (в фоне, UI не блокируем)
+  provisionGroupFolder(groupId, slug);
+
   return saveTree(tree);
 }
+
 
 export function renameNode(id, name) {
   const tree = loadTree();
@@ -49,6 +102,15 @@ export function renameNode(id, name) {
 export function deleteNode(id) {
   const tree = loadTree();
   if (id === 'root') return tree;
+
+  // найдём узел ДО удаления, чтобы были данные для файлового сервиса
+  const n = findNode(tree, id);
+
+  if (n?.type === 'group' && n.groupId) {
+    // удаляем папку группы на диске (не ждём ответа, чтобы не блокировать UI)
+    removeGroupFolder(n.groupId, n.slug || safeSlug(n.name || n.groupId));
+  }
+
   removeNode(tree, id);
   return saveTree(tree);
 }
