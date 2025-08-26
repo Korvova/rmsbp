@@ -47,7 +47,7 @@
   display:block; font-size:12px; opacity:.7; margin-bottom:4px;
 }
 .tm-input, .tm-textarea{
-  width: 100%;
+/*   width: 100%; */
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   padding: 8px 10px;

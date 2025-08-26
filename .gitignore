@@ -1,0 +1,20 @@
+# общие
+*.log
+.DS_Store
+.vscode/
+
+# node
+node_modules/
+webapp/node_modules/
+
+# локальные данные
+storage/*
+!storage/.gitkeep
+
+# filestash: не коммитим бинарь и исходники (слишком тяжело)
+filestash/
+filestash-src/
+
+# приватные конфиги (оставим шаблоны позже)
+config/filestash/config.json
+config/pm2/ecosystem.config.js

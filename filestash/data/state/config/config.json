@@ -1,0 +1,71 @@
+{
+    "general": {
+        "name": null,
+        "port": null,
+        "host": null,
+        "secret_key": "41ElgPcBV4A9xhdp",
+        "force_ssl": null,
+        "editor": null,
+        "fork_button": null,
+        "logout": null,
+        "display_hidden": null,
+        "refresh_after_upload": null,
+        "upload_button": null,
+        "upload_pool_size": null,
+        "upload_chunk_size": null,
+        "filepage_default_view": null,
+        "filepage_default_sort": null,
+        "cookie_timeout": null,
+        "custom_css": null
+    },
+    "features": {
+        "api": {
+            "enable": null,
+            "api_key": null
+        },
+        "share": {
+            "enable": null,
+            "default_access": null,
+            "redirect": null
+        },
+        "protection": {
+            "iframe": null,
+            "enable_chromecast": null,
+            "signature": null
+        }
+    },
+    "log": {
+        "enable": null,
+        "level": null,
+        "telemetry": null
+    },
+    "email": {
+        "server": null,
+        "port": null,
+        "username": null,
+        "password": null,
+        "from": null
+    },
+    "auth": {
+        "admin": null
+    },
+    "connections": [
+        {
+            "label": "SFTP",
+            "type": "sftp"
+        },
+        {
+            "label": "S3",
+            "type": "s3"
+        },
+        {
+            "label": "FTP",
+            "type": "ftp"
+        },
+        {
+            "label": "WebDAV",
+            "type": "webdav"
+        }
+    ]
+}
+

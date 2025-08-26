@@ -1,0 +1,7 @@
+{
+  "branding": { "name": "RMS Storage" },
+  "fs": { "allow": ["/var/www/rmsbp/storage"] },
+  "bookmarks": [
+    { "name": "Groups", "url": "fs:///var/www/rmsbp/storage/Groups" }
+  ]
+}

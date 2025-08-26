@@ -1,0 +1,3 @@
+2025/08/26 12:23:20 SYST WARN plg_video_thumbnail::init error=ffmpeg_not_installed
+2025/08/26 12:23:20 SYST INFO [http] starting ...
+2025/08/26 12:23:21 SYST INFO [http] listening on :8334
